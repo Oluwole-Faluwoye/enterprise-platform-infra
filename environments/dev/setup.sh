@@ -232,10 +232,10 @@ docker pull ${JENKINS_IMAGE}
 
 echo "📥 Pulling SonarQube image..."
 
-docker pull ${SONAR_IMAGE} || {
-  echo "SonarQube pull failed"
-  exit 1
-}
+if ! docker pull ${SONAR_IMAGE}; then
+    echo "ERROR: Failed to pull SonarQube image"
+    exit 1
+fi
 
 # ==========================================================
 # REMOVE EXISTING CONTAINERS

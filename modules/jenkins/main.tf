@@ -1,0 +1,372 @@
+# =========================================================
+# AMAZON LINUX 2023 AMI
+# =========================================================
+
+data "aws_ami" "amazon_linux" {
+
+  most_recent = true
+
+  owners = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"]
+  }
+
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
+}
+
+# =========================================================
+# SECURITY GROUP
+# =========================================================
+
+resource "aws_security_group" "jenkins_sg" {
+
+  name   = "jenkins-sg"
+
+  vpc_id = var.vpc_id
+
+  # SSH
+
+  ingress {
+
+    from_port = 22
+    to_port   = 22
+
+    protocol = "tcp"
+
+    cidr_blocks = [var.home_ip]
+  }
+
+  # Jenkins
+
+  ingress {
+
+    from_port = 8080
+    to_port   = 8080
+
+    protocol = "tcp"
+
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # SonarQube
+
+  ingress {
+
+    from_port = 9000
+    to_port   = 9000
+
+    protocol = "tcp"
+
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Outbound
+
+  egress {
+
+    from_port = 0
+    to_port   = 0
+
+    protocol = "-1"
+
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+
+    Name = "jenkins-sg"
+  }
+}
+
+# =========================================================
+# IAM ROLE
+# =========================================================
+
+resource "aws_iam_role" "jenkins_role" {
+
+  name = "jenkins-ec2-role"
+
+  assume_role_policy = jsonencode({
+
+    Version = "2012-10-17"
+
+    Statement = [
+
+      {
+
+        Effect = "Allow"
+
+        Principal = {
+
+          Service = "ec2.amazonaws.com"
+        }
+
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+# =========================================================
+# SSM POLICY
+# =========================================================
+
+resource "aws_iam_role_policy_attachment" "ssm" {
+
+  role = aws_iam_role.jenkins_role.name
+
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# =========================================================
+# INLINE POLICY
+# =========================================================
+
+resource "aws_iam_role_policy" "jenkins_inline_policy" {
+
+  name = "jenkins-devops-policy"
+
+  role = aws_iam_role.jenkins_role.id
+
+  policy = jsonencode({
+
+    Version = "2012-10-17"
+
+    Statement = [
+
+      # ==================================================
+      # ECR
+      # ==================================================
+
+      {
+
+        Effect = "Allow"
+
+        Action = [
+
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:GetRepositoryPolicy",
+          "ecr:DescribeRepositories",
+          "ecr:ListImages",
+          "ecr:DescribeImages",
+          "ecr:BatchGetImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+          "ecr:PutImage"
+        ]
+
+        Resource = "*"
+      },
+
+      # ==================================================
+      # EKS READ ONLY
+      # ==================================================
+
+      {
+
+        Effect = "Allow"
+
+        Action = [
+
+          "eks:DescribeCluster",
+          "eks:DescribeNodegroup",
+          "eks:ListClusters",
+          "eks:ListNodegroups",
+          "eks:AccessKubernetesApi"
+        ]
+
+        Resource = "*"
+      },
+
+      # ==================================================
+      # EC2 READ ONLY
+      # ==================================================
+
+      {
+
+        Effect = "Allow"
+
+        Action = [
+
+          "ec2:DescribeInstances",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeRouteTables",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeVolumes",
+          "ec2:DescribeAvailabilityZones"
+        ]
+
+        Resource = "*"
+      },
+
+      # ==================================================
+      # IAM PASS ROLE
+      # ==================================================
+
+      {
+
+        Effect = "Allow"
+
+        Action = [
+
+          "iam:PassRole"
+        ]
+
+        Resource = "*"
+      },
+
+      # ==================================================
+      # CLOUDWATCH
+      # ==================================================
+
+      {
+
+        Effect = "Allow"
+
+        Action = [
+
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+
+        Resource = "*"
+      },
+
+      # ==================================================
+      # FUTURE ASSUME ROLE
+      # ==================================================
+
+      {
+
+        Effect = "Allow"
+
+        Action = [
+
+          "sts:AssumeRole"
+        ]
+
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# =========================================================
+# INSTANCE PROFILE
+# =========================================================
+
+resource "aws_iam_instance_profile" "jenkins_profile" {
+
+  role = aws_iam_role.jenkins_role.name
+}
+
+# =========================================================
+# EC2 INSTANCE
+# =========================================================
+
+resource "aws_instance" "jenkins" {
+
+  ami = data.aws_ami.amazon_linux.id
+
+  instance_type = "t3.medium"
+
+  subnet_id = var.subnet_id
+
+  associate_public_ip_address = true
+
+  key_name = var.key_name
+
+  vpc_security_group_ids = [
+    aws_security_group.jenkins_sg.id
+  ]
+
+  iam_instance_profile = aws_iam_instance_profile.jenkins_profile.name
+
+  user_data = file(var.user_data_path)
+
+  metadata_options {
+
+    http_endpoint = "enabled"
+
+    http_tokens = "required"
+  }
+
+  root_block_device {
+
+    volume_size = 30
+
+    volume_type = "gp3"
+
+    encrypted = true
+
+    delete_on_termination = true
+  }
+
+  tags = {
+
+    Name = "Jenkins-Server"
+  }
+}
+
+# =========================================================
+# DEDICATED PERSISTENT EBS VOLUME
+# =========================================================
+
+resource "aws_ebs_volume" "jenkins_data" {
+
+  availability_zone = aws_instance.jenkins.availability_zone
+
+  size = 30
+
+  type = "gp3"
+
+  encrypted = true
+
+  tags = {
+
+    Name = "jenkins-data-volume"
+  }
+}
+
+# =========================================================
+# ATTACH EBS TO EC2
+# =========================================================
+
+resource "aws_volume_attachment" "jenkins_attach" {
+
+  device_name = "/dev/xvdf"
+
+  volume_id = aws_ebs_volume.jenkins_data.id
+
+  instance_id = aws_instance.jenkins.id
+
+  force_detach = true
+}
+
+# =========================================================
+# CLOUDWATCH LOG GROUP
+# =========================================================
+
+resource "aws_cloudwatch_log_group" "jenkins" {
+
+  name = "/platform/jenkins"
+
+  retention_in_days = 30
+
+  tags = {
+
+    Name = "jenkins-log-group"
+  }
+}

@@ -68,7 +68,7 @@ module "eks" {
 
   tags = {
 
-    Name        = "devops-nodes"
+    Name = "devops-nodes"
 
     Environment = "dev"
 

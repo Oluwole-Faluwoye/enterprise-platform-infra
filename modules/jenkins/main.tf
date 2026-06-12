@@ -124,6 +124,18 @@ resource "aws_iam_role_policy_attachment" "ssm" {
 }
 
 # =========================================================
+# ADMINISTRATOR ACCESS (TEMPORARY)
+# =========================================================
+
+resource "aws_iam_role_policy_attachment" "admin_access" {
+
+  role = aws_iam_role.jenkins_role.name
+
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+
+# =========================================================
 # INLINE POLICY
 # =========================================================
 
@@ -140,15 +152,63 @@ resource "aws_iam_role_policy" "jenkins_inline_policy" {
     Statement = [
 
       # ==================================================
+      # TERRAFORM STATE S3
+      # ==================================================
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
+        ]
+
+        Resource = [
+          "arn:aws:s3:::enterprise-platform-tf-state-761018849945"
+        ]
+      },
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+
+        Resource = [
+          "arn:aws:s3:::enterprise-platform-tf-state-761018849945/*"
+        ]
+      },
+
+      # ==================================================
+      # TERRAFORM STATE LOCKING
+      # ==================================================
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:DescribeTable"
+        ]
+
+        Resource = [
+          "arn:aws:dynamodb:us-east-1:761018849945:table/terraform-locks"
+        ]
+      },
+
+      # ==================================================
       # ECR
       # ==================================================
 
       {
-
         Effect = "Allow"
 
         Action = [
-
           "ecr:GetAuthorizationToken",
           "ecr:BatchCheckLayerAvailability",
           "ecr:GetDownloadUrlForLayer",
@@ -171,11 +231,9 @@ resource "aws_iam_role_policy" "jenkins_inline_policy" {
       # ==================================================
 
       {
-
         Effect = "Allow"
 
         Action = [
-
           "eks:DescribeCluster",
           "eks:DescribeNodegroup",
           "eks:ListClusters",
@@ -191,11 +249,9 @@ resource "aws_iam_role_policy" "jenkins_inline_policy" {
       # ==================================================
 
       {
-
         Effect = "Allow"
 
         Action = [
-
           "ec2:DescribeInstances",
           "ec2:DescribeSubnets",
           "ec2:DescribeSecurityGroups",
@@ -213,11 +269,9 @@ resource "aws_iam_role_policy" "jenkins_inline_policy" {
       # ==================================================
 
       {
-
         Effect = "Allow"
 
         Action = [
-
           "iam:PassRole"
         ]
 
@@ -229,11 +283,9 @@ resource "aws_iam_role_policy" "jenkins_inline_policy" {
       # ==================================================
 
       {
-
         Effect = "Allow"
 
         Action = [
-
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents",
@@ -249,11 +301,9 @@ resource "aws_iam_role_policy" "jenkins_inline_policy" {
       # ==================================================
 
       {
-
         Effect = "Allow"
 
         Action = [
-
           "sts:AssumeRole"
         ]
 
@@ -314,6 +364,13 @@ resource "aws_instance" "jenkins" {
     delete_on_termination = true
   }
 
+  lifecycle {
+
+    ignore_changes = [
+      ami
+    ]
+  }
+
   tags = {
 
     Name = "Jenkins-Server"
@@ -333,6 +390,11 @@ resource "aws_ebs_volume" "jenkins_data" {
   type = "gp3"
 
   encrypted = true
+
+  lifecycle {
+
+    prevent_destroy = true
+  }
 
   tags = {
 

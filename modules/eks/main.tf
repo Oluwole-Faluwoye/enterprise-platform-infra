@@ -50,7 +50,9 @@ module "eks" {
 
   eks_managed_node_groups = {
 
-    default = {
+    devops_nodes = {
+
+      name = "devops-nodes"
 
       desired_size = 1
 
@@ -65,6 +67,8 @@ module "eks" {
   }
 
   tags = {
+
+    Name        = "devops-nodes"
 
     Environment = "dev"
 

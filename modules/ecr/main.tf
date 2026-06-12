@@ -1,7 +1,7 @@
 
 resource "aws_ecr_repository" "repo" {
 
-  name         = var.name
+  name = var.name
 
   force_delete = true
 

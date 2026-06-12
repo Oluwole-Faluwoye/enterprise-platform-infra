@@ -1,7 +1,7 @@
 
 module "eks" {
 
-  source  = "terraform-aws-modules/eks/aws"
+  source = "terraform-aws-modules/eks/aws"
 
   version = "~> 20.0"
 
@@ -11,7 +11,7 @@ module "eks" {
 
   subnet_ids = var.subnet_ids
 
-  cluster_endpoint_public_access = true
+  cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
 
   enable_cluster_creator_admin_permissions = true

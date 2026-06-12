@@ -25,7 +25,7 @@ data "aws_ami" "amazon_linux" {
 
 resource "aws_security_group" "jenkins_sg" {
 
-  name   = "jenkins-sg"
+  name = "jenkins-sg"
 
   vpc_id = var.vpc_id
 

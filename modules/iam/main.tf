@@ -1,32 +1,32 @@
 resource "aws_iam_role" "terraform_deployer" {
 
-name = "terraform-deployer-role"
+  name = "terraform-deployer-role"
 
-assume_role_policy = jsonencode({
+  assume_role_policy = jsonencode({
 
-Version = "2012-10-17"
+    Version = "2012-10-17"
 
-Statement = [
+    Statement = [
 
-  {
+      {
 
-    Effect = "Allow"
+        Effect = "Allow"
 
-    Principal = {
+        Principal = {
 
-      AWS = var.jenkins_role_arn
-    }
+          AWS = var.jenkins_role_arn
+        }
 
-    Action = "sts:AssumeRole"
-  }
-]
+        Action = "sts:AssumeRole"
+      }
+    ]
 
-})
+  })
 }
 
 resource "aws_iam_role_policy_attachment" "administrator_access" {
 
-role = aws_iam_role.terraform_deployer.name
+  role = aws_iam_role.terraform_deployer.name
 
-policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }

@@ -2,12 +2,35 @@ pipeline {
 
     agent any
 
+    parameters {
+
+        booleanParam(
+            name: 'APPLY_CHANGES',
+            defaultValue: false,
+            description: 'Apply Terraform changes after approval'
+        )
+
+        string(
+            name: 'KEY_NAME',
+            defaultValue: 'us-east-1-key',
+            description: 'AWS EC2 Key Pair Name'
+        )
+
+        string(
+            name: 'HOME_IP',
+            defaultValue: '174.2.8.121/32',
+            description: 'Allowed SSH Source IP'
+        )
+    }
+
     environment {
 
         AWS_REGION = "us-east-1"
-        ROLE_ARN   = "arn:aws:iam::761018849945:role/terraform-deployer-role"
+
+        ROLE_ARN = "arn:aws:iam::761018849945:role/terraform-deployer-role"
 
         TF_IN_AUTOMATION = "true"
+
         TF_ENV = "dev"
     }
 
@@ -210,6 +233,14 @@ home_ip = "${params.HOME_IP}"
 
         stage('Manual Approval') {
 
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
             steps {
 
                 input(
@@ -225,7 +256,10 @@ home_ip = "${params.HOME_IP}"
 
             when {
 
-                branch 'main'
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
             }
 
             steps {

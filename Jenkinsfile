@@ -438,18 +438,13 @@ home_ip = "${params.HOME_IP}"
 
                 sh '''
 
-                kubectl wait \
-                
-                  --for=condition=Established \
-                
-                  crd/applications.argoproj.io \
-                
-                  --timeout=120s
-
-
+                echo "Applying Root App..."
 
                 kubectl apply \
                   -f gitops/root-app.yaml
+
+                kubectl get application root-app \
+                  -n argocd || true  
 
                 '''
             }

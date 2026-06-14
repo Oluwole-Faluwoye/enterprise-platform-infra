@@ -443,8 +443,13 @@ home_ip = "${params.HOME_IP}"
                 kubectl apply \
                   -f gitops/root-app.yaml
 
+                sleep 10
+
                 kubectl get application root-app \
                   -n argocd || true  
+
+                kubectl describe application root-app \
+                  -n argocd || true
 
                 '''
             }

@@ -276,23 +276,234 @@ home_ip = "${params.HOME_IP}"
                 }
             }
         }
+    
+        
+        stage('Validate EKS Cluster') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
+            steps {
+
+                dir("environments/${TF_ENV}") {
+
+                    sh '''
+
+                    CLUSTER_NAME=$(terraform output -raw cluster_name)
+
+                    echo "Cluster Name: ${CLUSTER_NAME}"
+
+                    aws eks describe-cluster \
+                      --name ${CLUSTER_NAME} \
+                      --region ${AWS_REGION}
+
+                    '''
+                }
+            }
+        }
+
+        stage('Configure kubectl') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
+            steps {
+
+                dir("environments/${TF_ENV}") {
+
+                    sh '''
+
+                    CLUSTER_NAME=$(terraform output -raw cluster_name)
+
+                    aws eks update-kubeconfig \
+                      --name ${CLUSTER_NAME} \
+                      --region ${AWS_REGION}
+
+                    kubectl get nodes -o wide 
+
+                    '''
+                }
+            }
+        }
+
+        stage('Install ArgoCD') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
+            steps {
+
+                sh '''
+
+                helm repo add argo https://argoproj.github.io/argo-helm
+
+                helm repo update
+
+                helm upgrade --install argocd \
+                  argo/argo-cd \
+                  --namespace argocd \
+                  --create-namespace \
+                  --wait \
+                  --timeout 10m
+
+                '''
+            }
+        }
+
+        stage('Wait For ArgoCD') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
+            steps {
+
+                sh '''
+
+                echo "Checking ArgoCD pods..." 
+                
+                kubectl get pods -n argocd 
+                
+                echo "Waiting for ArgoCD Server..."
+
+
+                kubectl wait \
+                  --for=condition=available \
+                  deployment/argocd-server \
+                  -n argocd \
+                  --timeout=600s
+                
+                echo "ArgoCD is ready."
+
+                kubectl get pods -n argocd
+            
+
+                '''
+            }
+        }
+
+        stage('Checkout GitOps Repo') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
+            steps {
+
+                dir('gitops') {
+
+                    git(
+                        branch: 'main',
+                        credentialsId: 'github-ssh',
+                        url: 'git@github.com:Oluwole-Faluwoye/enterprise-platform-gitops.git'
+                    )
+                }
+            }
+        }
+
+        stage('Bootstrap GitOps') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
+            steps {
+
+                sh '''
+
+                kubectl wait \
+                
+                  --for=condition=Established \
+                
+                  crd/applications.argoproj.io \
+                
+                  --timeout=120s
+
+
+
+                kubectl apply \
+                  -f gitops/root-app.yaml
+
+                '''
+            }
+        }
+
+        stage('Verify GitOps') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
+            steps {
+
+                sh '''
+
+                echo "ArgoCD Applications"
+
+                kubectl get applications -n argocd || true
+
+                kubectl describe application root-app -n argocd || true
+
+                echo "ArgoCD Pods"
+
+                kubectl get pods -n argocd
+
+                echo "ArgoCD Services"
+
+                kubectl get svc -n argocd
+
+                '''
+            }
+        }
     }
 
-    post {
 
-        success {
+        post {
 
-            echo "Infrastructure deployment successful."
-        }
+            success {
 
-        failure {
+                echo "Infrastructure deployment successful."
+            }
 
-            echo "Infrastructure deployment failed."
-        }
+            failure {
 
-        always {
+                echo "Infrastructure deployment failed."
+            }
 
-            cleanWs()
+            always {
+
+                cleanWs()
+            }
         }
     }
-}

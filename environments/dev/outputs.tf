@@ -14,3 +14,11 @@ output "terraform_deployer_role_arn" {
 
   value = var.enable_jenkins ? module.iam[0].terraform_role_arn : null
 }
+
+output "cluster_name" {
+  value = module.eks.cluster_name
+}
+
+output "cluster_endpoint" {
+  value = module.eks.cluster_endpoint
+}

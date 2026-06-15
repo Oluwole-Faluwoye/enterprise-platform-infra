@@ -18,3 +18,4 @@ variable "home_ip" {
   description = "Home public IP in CIDR format"
   type        = string
 }
+

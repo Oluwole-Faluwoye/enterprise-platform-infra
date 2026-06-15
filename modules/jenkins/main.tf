@@ -1,3 +1,11 @@
+
+# =========================================================
+# AWS Region retrieval automatic
+# =========================================================
+
+data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
 # =========================================================
 # AMAZON LINUX 2023 AMI
 # =========================================================
@@ -107,6 +115,46 @@ resource "aws_iam_role" "jenkins_role" {
         }
 
         Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+# =========================================================
+# SECRETS MANAGER ACCESS
+# =========================================================
+
+resource "aws_iam_role_policy" "jenkins_secrets_manager" {
+
+  name = "jenkins-secrets-manager"
+
+  role = aws_iam_role.jenkins_role.id
+
+  policy = jsonencode({
+
+    Version = "2012-10-17"
+
+    Statement = [
+
+      {
+
+        Sid = "ReadGitOpsSecret"
+
+        Effect = "Allow"
+
+        Action = [
+
+          "secretsmanager:GetSecretValue",
+
+          "secretsmanager:DescribeSecret"
+
+        ]
+
+        Resource = [
+
+          "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:argocd/gitops/private-key*"
+
+        ]
       }
     ]
   })

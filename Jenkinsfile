@@ -18,7 +18,7 @@ pipeline {
 
         string(
             name: 'HOME_IP',
-            defaultValue: '174.2.8.121/32',
+            defaultValue: '70.64.74.185/32',
             description: 'Allowed SSH Source IP'
         )
     }
@@ -421,6 +421,25 @@ home_ip = "${params.HOME_IP}"
                         url: 'git@github.com:Oluwole-Faluwoye/enterprise-platform-gitops.git'
                     )
                 }
+            }
+        }
+
+        stage('Debug GitOps Repo') {
+
+            steps {
+
+                sh '''
+
+                echo "===== WORKSPACE ====="
+                pwd
+
+                echo "===== GITOPS FILES ====="
+                find gitops -type f
+
+                echo "===== PLATFORM SERVICES ====="
+                ls -R gitops || true
+
+                '''
             }
         }
 

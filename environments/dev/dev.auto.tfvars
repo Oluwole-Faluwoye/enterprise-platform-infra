@@ -2,8 +2,8 @@ region = "us-east-1"
 
 enable_ecr         = true
 enable_jenkins     = true
-enable_eks         = true
-enable_nat_gateway = true
+enable_eks         = false
+enable_nat_gateway = false
 
 vpc_name = "devops-vpc"
 vpc_cidr = "10.0.0.0/16"

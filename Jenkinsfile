@@ -426,6 +426,14 @@ home_ip = "${params.HOME_IP}"
 
         stage('Debug GitOps Repo') {
 
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
             steps {
 
                 sh '''
@@ -445,58 +453,64 @@ home_ip = "${params.HOME_IP}"
 
         stage('Configure ArgoCD Repository') {
 
-            when {
-                expression {
-                    return params.APPLY_CHANGES
-                }
-            }
+    when {
 
-            steps {
+        expression {
 
-                sh '''
-
-                echo "Retrieving SSH key from Secrets Manager..."
-
-                set +x
-
-                PRIVATE_KEY=$(aws secretsmanager get-secret-value \
-                --secret-id argocd/gitops/private-key \
-                --query SecretString \
-                --output text)
-
-                echo "Secret retrieved successfully"
-
-                cp gitops/platform-services/argocd-repository-secret.yaml .
-
-                python3 <<EOF
-                from pathlib import Path
-
-                key = """${PRIVATE_KEY}"""
-
-                file = Path("argocd-repository-secret.yaml")
-
-                content = file.read_text()
-
-                content = content.replace(
-                    "REPLACE_AT_RUNTIME",
-                    key
-                )
-
-                file.write_text(content)
-                EOF
-
-                kubectl get ns argocd
-
-                kubectl apply -f argocd-repository-secret.yaml
-
-                kubectl get secret enterprise-platform-gitops \
-                -n argocd
-
-                '''
-
-            }
+            return params.APPLY_CHANGES
         }
+    }
+
+    steps {
+
+        sh '''
+
+        echo "Retrieving SSH key from Secrets Manager..."
+
+        set +x
+
+        PRIVATE_KEY=$(aws secretsmanager get-secret-value \
+          --secret-id argocd/gitops/private-key \
+          --query SecretString \
+          --output text)
+
+        echo "Secret retrieved successfully"
+
+cat > repository-secret.yaml <<'EOF'
+apiVersion: v1
+kind: Secret
+
+metadata:
+  name: enterprise-platform-gitops
+  namespace: argocd
+
+  labels:
+    argocd.argoproj.io/secret-type: repository
+
+type: Opaque
+
+stringData:
+  type: git
+  url: git@github.com:Oluwole-Faluwoye/enterprise-platform-gitops.git
+  sshPrivateKey: |
+EOF
+
+        echo "$PRIVATE_KEY" | sed 's/^/    /' >> repository-secret.yaml
+
+        echo "Applying ArgoCD repository secret..."
+
+        echo "===== GENERATED SECRET ====="
         
+        cat repository-secret.yaml
+
+        kubectl apply -f repository-secret.yaml
+
+        kubectl get secret enterprise-platform-gitops \
+          -n argocd
+
+        '''
+    }
+}
 
         stage('Bootstrap GitOps') {
 
@@ -512,17 +526,12 @@ home_ip = "${params.HOME_IP}"
 
                 sh '''
 
-                echo "Applying Root App..."
+                echo "Bootstrapping ArgoCD..."
 
                 kubectl apply \
                   -f gitops/root-app.yaml
 
-                sleep 10
-
                 kubectl get application root-app \
-                  -n argocd || true  
-
-                kubectl describe application root-app \
                   -n argocd || true
 
                 '''

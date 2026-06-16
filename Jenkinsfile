@@ -457,17 +457,21 @@ home_ip = "${params.HOME_IP}"
 
                 echo "Retrieving SSH key from Secrets Manager..."
 
+                set +x
+
                 PRIVATE_KEY=$(aws secretsmanager get-secret-value \
-                  --secret-id argocd/gitops/private-key \
-                  --query SecretString \
-                  --output text)
+                --secret-id argocd/gitops/private-key \
+                --query SecretString \
+                --output text)
 
                 echo "Secret retrieved successfully"
 
                 cp gitops/platform-services/argocd-repository-secret.yaml .
 
+                ESCAPED_KEY=$(printf '%s\n' "$PRIVATE_KEY" | sed ':a;N;$!ba;s/\n/\\\\n/g')
+
                 sed -i \
-                "s|REPLACE_AT_RUNTIME|$(echo "$PRIVATE_KEY" | sed ':a;N;$!ba;s/\n/\\\\n/g')|" \
+                "s|REPLACE_AT_RUNTIME|${ESCAPED_KEY}|" \
                 argocd-repository-secret.yaml
 
                 kubectl get ns argocd

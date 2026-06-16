@@ -499,10 +499,6 @@ EOF
 
         echo "Applying ArgoCD repository secret..."
 
-        echo "===== GENERATED SECRET ====="
-        
-        cat repository-secret.yaml
-
         kubectl apply -f repository-secret.yaml
 
         kubectl get secret enterprise-platform-gitops \

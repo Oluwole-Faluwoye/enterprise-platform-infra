@@ -468,19 +468,29 @@ home_ip = "${params.HOME_IP}"
 
                 cp gitops/platform-services/argocd-repository-secret.yaml .
 
-                ESCAPED_KEY=$(printf '%s\n' "$PRIVATE_KEY" | sed ':a;N;$!ba;s/\n/\\\\n/g')
+                python3 <<EOF
+                from pathlib import Path
 
-                sed -i \
-                "s|REPLACE_AT_RUNTIME|${ESCAPED_KEY}|" \
-                argocd-repository-secret.yaml
+                key = """${PRIVATE_KEY}"""
+
+                file = Path("argocd-repository-secret.yaml")
+
+                content = file.read_text()
+
+                content = content.replace(
+                    "REPLACE_AT_RUNTIME",
+                    key
+                )
+
+                file.write_text(content)
+                EOF
 
                 kubectl get ns argocd
-                
-                kubectl apply \
-                  -f argocd-repository-secret.yaml
+
+                kubectl apply -f argocd-repository-secret.yaml
 
                 kubectl get secret enterprise-platform-gitops \
-                  -n argocd
+                -n argocd
 
                 '''
 

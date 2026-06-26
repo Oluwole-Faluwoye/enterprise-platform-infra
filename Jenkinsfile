@@ -21,8 +21,7 @@ pipeline {
 
         TF_ENV = "dev"
 
-        K8S_API_CIDRS = '''
-    [
+        K8S_API_CIDRS = [
       "174.2.8.121/32",
       "70.64.74.185/32"
     ]

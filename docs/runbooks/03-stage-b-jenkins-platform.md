@@ -262,7 +262,7 @@ SSH:
 
 Restricted to home IP  
 
-NOTE : Always ensure to check your home IP and edit it in the ( terraform.tfvars file ) before running terraform apply
+NOTE : Always ensure to check your allowed_jenkins_Cidr and edit it in the ( terraform.tfvars file ) before running terraform apply
 
 To  get your home Ip address run this on your browser : https://whatismyipaddress.com/
 

@@ -9,18 +9,6 @@ pipeline {
             defaultValue: false,
             description: 'Apply Terraform changes after approval'
         )
-
-        string(
-            name: 'KEY_NAME',
-            defaultValue: 'us-east-1-key',
-            description: 'AWS EC2 Key Pair Name'
-        )
-
-        string(
-            name: 'HOME_IP',
-            defaultValue: '70.64.74.185/32',
-            description: 'Allowed SSH Source IP'
-        )
     }
 
     environment {
@@ -32,6 +20,13 @@ pipeline {
         TF_IN_AUTOMATION = "true"
 
         TF_ENV = "dev"
+
+        K8S_API_CIDRS = '''
+    [
+      "174.2.8.121/32",
+      "70.64.74.185/32"
+    ]
+    '''
     }
 
     options {
@@ -118,14 +113,10 @@ pipeline {
                 dir("environments/${TF_ENV}") {
 
                     writeFile(
-
                         file: 'terraform.tfvars',
-
                         text: """
-key_name = "${params.KEY_NAME}"
-
-home_ip = "${params.HOME_IP}"
-"""
+                    allowed_k8s_api_cidrs = ${env.K8S_API_CIDRS}
+                    """
                     )
 
                     sh '''
@@ -470,7 +461,7 @@ home_ip = "${params.HOME_IP}"
         set +x
 
         PRIVATE_KEY=$(aws secretsmanager get-secret-value \
-          --secret-id argocd/gitops/private-key \
+          --secret-id argocd/gitops/private-key-1 \
           --query SecretString \
           --output text)
 
@@ -548,25 +539,56 @@ EOF
 
                 sh '''
 
+                echo "========================================"
                 echo "ArgoCD Applications"
+                echo "========================================"
 
                 kubectl get applications -n argocd || true
 
+                echo ""
+                echo "Waiting for Applications to reconcile..."
+                sleep 30
+
+                echo ""
+                echo "Application Status Summary"
+
+                kubectl get applications -n argocd \
+                -o custom-columns=NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status || true
+
+                echo ""
+                echo "Root Application Details"
+
                 kubectl describe application root-app -n argocd || true
 
+                echo ""
                 echo "ArgoCD Pods"
 
                 kubectl get pods -n argocd
 
+                echo ""
                 echo "ArgoCD Services"
 
                 kubectl get svc -n argocd
+
+                echo ""
+                echo "Monitoring Namespace"
+
+                kubectl get pods -n monitoring || true
+
+                echo ""
+                echo "Monitoring PVCs"
+
+                kubectl get pvc -n monitoring || true
+
+                echo ""
+                echo "Persistent Volumes"
+
+                kubectl get pv || true
 
                 '''
             }
         }
     }
-
 
         post {
 

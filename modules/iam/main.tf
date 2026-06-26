@@ -14,13 +14,15 @@ resource "aws_iam_role" "terraform_deployer" {
 
         Principal = {
 
-          AWS = var.jenkins_role_arn
+          AWS = [
+            var.admin_user_arn,
+            var.jenkins_role_arn
+          ]
         }
 
         Action = "sts:AssumeRole"
       }
     ]
-
   })
 }
 

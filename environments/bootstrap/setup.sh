@@ -169,11 +169,16 @@ echo "📁 Creating persistent directories..."
 
 sudo mkdir -p /data/jenkins
 
+sudo mkdir -p /data/jenkins/dependency-check-data
+
+sudo mkdir -p /data/jenkins/trivy-cache
+
 sudo mkdir -p /data/sonarqube/data
 
 sudo mkdir -p /data/sonarqube/logs
 
 sudo mkdir -p /data/sonarqube/extensions
+
 
 # ==========================================================
 # PERMISSIONS
@@ -184,6 +189,10 @@ echo "🔐 Configuring permissions..."
 sudo chown -R 1000:1000 /data/jenkins
 
 sudo chmod -R 775 /data/jenkins
+
+sudo chmod 777 /data/jenkins/trivy-cache
+
+sudo chmod -R 777 /data/jenkins/dependency-check-data
 
 sudo chown -R 1000:1000 /data/sonarqube
 

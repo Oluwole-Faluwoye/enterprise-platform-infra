@@ -46,7 +46,7 @@ resource "aws_security_group" "jenkins_sg" {
 
     protocol = "tcp"
 
-    cidr_blocks = [var.home_ip]
+    cidr_blocks = var.allowed_jenkins_ssh_cidrs
   }
 
   # Jenkins
@@ -441,7 +441,7 @@ resource "aws_ebs_volume" "jenkins_data" {
 
   lifecycle {
 
-    prevent_destroy = true
+    prevent_destroy = false
   }
 
   tags = {

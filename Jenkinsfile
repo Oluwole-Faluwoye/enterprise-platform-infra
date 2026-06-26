@@ -21,11 +21,10 @@ pipeline {
 
         TF_ENV = "dev"
 
-        K8S_API_CIDRS = [
+        K8S_API_CIDRS = '''[
       "174.2.8.121/32",
       "70.64.74.185/32"
-    ]
-    '''
+    ]'''
     }
 
     options {
@@ -113,9 +112,7 @@ pipeline {
 
                     writeFile(
                         file: 'terraform.tfvars',
-                        text: """
-                    allowed_k8s_api_cidrs = ${env.K8S_API_CIDRS}
-                    """
+                        text: "allowed_k8s_api_cidrs = ${env.K8S_API_CIDRS}\n"
                     )
 
                     sh '''

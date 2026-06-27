@@ -382,8 +382,6 @@ resource "aws_instance" "jenkins" {
 
   subnet_id = var.subnet_id
 
-  associate_public_ip_address = true
-
   key_name = var.key_name
 
   vpc_security_group_ids = [
@@ -415,7 +413,8 @@ resource "aws_instance" "jenkins" {
   lifecycle {
 
     ignore_changes = [
-      ami
+      ami,
+      user_data
     ]
   }
 
@@ -429,9 +428,13 @@ resource "aws_instance" "jenkins" {
 # DEDICATED PERSISTENT EBS VOLUME
 # =========================================================
 
+data "aws_subnet" "jenkins" {
+  id = var.subnet_id
+}
+
 resource "aws_ebs_volume" "jenkins_data" {
 
-  availability_zone = aws_instance.jenkins.availability_zone
+  availability_zone = data.aws_subnet.jenkins.availability_zone
 
   size = 30
 
@@ -441,12 +444,13 @@ resource "aws_ebs_volume" "jenkins_data" {
 
   lifecycle {
 
-    prevent_destroy = false
+    prevent_destroy = true
   }
 
   tags = {
 
     Name = "jenkins-data-volume"
+    Persistent = "true"
   }
 }
 

@@ -457,7 +457,7 @@ pipeline {
         set +x
 
         PRIVATE_KEY=$(aws secretsmanager get-secret-value \
-          --secret-id argocd/gitops/private-key-1 \
+          --secret-id argocd/gitops/private-key1 \
           --query SecretString \
           --output text)
 

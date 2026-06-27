@@ -449,7 +449,7 @@ resource "aws_ebs_volume" "jenkins_data" {
 
   tags = {
 
-    Name = "jenkins-data-volume"
+    Name       = "jenkins-data-volume"
     Persistent = "true"
   }
 }

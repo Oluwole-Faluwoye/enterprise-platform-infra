@@ -263,6 +263,31 @@ pipeline {
                 }
             }
         }
+
+        stage('Terraform Outputs') {
+
+            steps {
+
+                dir('enterprise-platform-infra/environments/dev') {
+
+                    sh '''
+                        terraform output
+                    '''
+
+                    sh '''
+                        terraform output hosted_zone_name_servers || true
+                    '''
+
+                    sh '''
+                        terraform output certificate_arn || true
+                    '''
+
+                    sh '''
+                        terraform output certificate_domain || true
+                    '''
+                }
+            }
+        }
     
         
         stage('Validate EKS Cluster') {

@@ -51,15 +51,18 @@ module "jenkins" {
 }
 
 
-# IAM (cost controlled)
-module "iam" {
+# =========================================================
+# IAM BOOTSTRAP
+# =========================================================
+
+module "iam_bootstrap" {
 
   count = var.enable_jenkins ? 1 : 0
 
-  source = "../../modules/iam"
-
-  jenkins_role_arn = module.jenkins[0].jenkins_role_arn
+  source = "../../modules/iam-bootstrap"
 
   admin_user_arn = var.admin_user_arn
+
+  jenkins_role_arn = module.jenkins[0].jenkins_role_arn
 
 }

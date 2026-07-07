@@ -19,7 +19,7 @@ output "jenkins_role_arn" {
 }
 
 output "terraform_deployer_role_arn" {
-  value = var.enable_jenkins ? module.iam[0].terraform_role_arn : null
+  value = var.enable_jenkins ? module.iam_bootstrap[0].terraform_role_arn : null
 }
 
 # =====================================================

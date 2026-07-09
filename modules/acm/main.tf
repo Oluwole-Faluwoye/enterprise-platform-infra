@@ -28,11 +28,11 @@ resource "aws_route53_record" "validation" {
 
     dvo.domain_name => {
 
-      name   = dvo.resource_record_name
+      name = dvo.resource_record_name
 
       record = dvo.resource_record_value
 
-      type   = dvo.resource_record_type
+      type = dvo.resource_record_type
 
     }
 

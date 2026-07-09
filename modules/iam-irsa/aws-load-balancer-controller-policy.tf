@@ -1,6 +1,6 @@
 resource "aws_iam_policy" "aws_load_balancer_controller" {
 
-  name        = "${var.project}-${var.environment}-aws-load-balancer-controller"
+  name = "${var.project}-${var.environment}-aws-load-balancer-controller"
 
   description = "IAM policy for the AWS Load Balancer Controller"
 

@@ -14,7 +14,9 @@ set -euo pipefail
 
 AWS_REGION="us-east-1"
 
-ACCOUNT_ID="761018849945"
+ACCOUNT_ID=$(aws sts get-caller-identity \
+--query Account \
+--output text)
 
 JENKINS_IMAGE="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/jenkins:v1"
 
@@ -295,7 +297,7 @@ echo "⏳ Waiting for Jenkins..."
 for i in {1..60}
 do
 
-    if curl -s http://localhost:8080/login >/dev/null
+    if curl --fail --silent http://localhost:8080/login >/dev/null
     then
 
         echo "✅ Jenkins Ready"
@@ -313,7 +315,7 @@ echo "⏳ Waiting for SonarQube..."
 for i in {1..60}
 do
 
-    if curl -s http://localhost:9000 >/dev/null
+    if curl --fail --silent http://localhost:9000 >/dev/null
     then
 
         echo "✅ SonarQube Ready"
@@ -353,6 +355,8 @@ docker exec jenkins helm version
 docker exec jenkins git --version
 
 docker exec jenkins terraform version
+
+docker exec jenkins yq --version
 
 # ==========================================================
 # JENKINS PASSWORD

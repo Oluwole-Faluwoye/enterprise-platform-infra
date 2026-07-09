@@ -264,29 +264,66 @@ pipeline {
             }
         }
 
-        stage('Terraform Outputs') {
+        stage('Read Terraform Outputs') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+
+                }
+
+            }
 
             steps {
 
-                dir('enterprise-platform-infra/environments/dev') {
+                dir("environments/${TF_ENV}") {
 
-                    sh '''
-                        terraform output
-                    '''
+                    script {
 
-                    sh '''
-                        terraform output hosted_zone_name_servers || true
-                    '''
+                        echo "Reading Terraform Outputs..."
 
-                    sh '''
-                        terraform output certificate_arn || true
-                    '''
+                        env.CLUSTER_NAME = sh(
+                            script: "terraform output -raw cluster_name",
+                            returnStdout: true
+                        ).trim()
 
-                    sh '''
-                        terraform output certificate_domain || true
-                    '''
+                        env.EXTERNAL_DNS_ROLE = sh(
+                            script: "terraform output -raw external_dns_role_arn",
+                            returnStdout: true
+                        ).trim()
+
+                        env.ALB_ROLE = sh(
+                            script: "terraform output -raw aws_load_balancer_controller_role_arn",
+                            returnStdout: true
+                        ).trim()
+
+                        env.CERTIFICATE_ARN = sh(
+                            script: "terraform output -raw certificate_arn",
+                            returnStdout: true
+                        ).trim()
+
+                        env.HOSTED_ZONE_ID = sh(
+                            script: "terraform output -raw hosted_zone_id",
+                            returnStdout: true
+                        ).trim()
+
+                    }
+
                 }
+
+                echo "========================================"
+                echo "Terraform Outputs"
+                echo "========================================"
+                echo "Cluster Name     : ${env.CLUSTER_NAME}"
+                echo "Hosted Zone ID   : ${env.HOSTED_ZONE_ID}"
+                echo "Certificate ARN  : ${env.CERTIFICATE_ARN}"
+                echo "ExternalDNS Role : ${env.EXTERNAL_DNS_ROLE}"
+                echo "ALB Role         : ${env.ALB_ROLE}"
+
             }
+
         }
     
         
@@ -461,6 +498,77 @@ pipeline {
 
                 '''
             }
+        }
+
+        stage('Update GitOps Configuration') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+
+                }
+
+            }
+
+            steps {
+
+                dir("gitops") {
+
+                    sh '''
+
+                    echo "========================================"
+                    echo "Updating GitOps Configuration"
+                    echo "========================================"
+
+                    echo "Updating ExternalDNS IAM Role..."
+
+                    yq e -i '
+                    .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(EXTERNAL_DNS_ROLE)
+                    ' charts/external-dns/values.yaml
+
+                    echo "Updating AWS Load Balancer Controller IAM Role..."
+
+                    yq e -i '
+                    .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(ALB_ROLE)
+                    ' charts/aws-load-balancer-controller/values.yaml
+
+                    echo "Updating Networking ACM Certificate..."
+
+                    yq e -i '
+                    .alb.certificateArn = env(CERTIFICATE_ARN)
+                    ' charts/networking/values.yaml
+
+                    echo ""
+                    echo "Git Changes"
+
+                    git diff
+
+                    git add .
+
+                    if git diff --cached --quiet
+                    then
+
+                        echo "No GitOps configuration changes detected."
+
+                    else
+
+                        git config user.email "jenkins@enterprise-platform.local"
+                        git config user.name "Jenkins"
+
+                        git commit -m "Update infrastructure configuration"
+
+                        git push origin main
+
+                    fi
+
+                    '''
+
+                }
+
+            }
+
         }
 
         stage('Configure ArgoCD Repository') {

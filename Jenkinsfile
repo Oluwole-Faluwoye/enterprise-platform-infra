@@ -15,7 +15,7 @@ pipeline {
 
         AWS_REGION = "us-east-1"
 
-        ROLE_ARN = "arn:aws:iam::761018849945:role/terraform-deployer-role"
+        ROLE_ARN = "arn:aws:iam::761018849945:role/enterprise-platform-terraform-role"
 
         TF_IN_AUTOMATION = "true"
 

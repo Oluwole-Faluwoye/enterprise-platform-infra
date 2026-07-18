@@ -6,7 +6,6 @@ The infrastructure pipeline manages AWS resources using Terraform.
 
 The pipeline provisions and updates infrastructure in a controlled and auditable manner.
 
----
 
 ## Managed Resources
 

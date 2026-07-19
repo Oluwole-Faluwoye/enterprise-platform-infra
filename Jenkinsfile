@@ -516,60 +516,65 @@ pipeline {
 
                 dir("gitops") {
 
-                    sh '''
+                    sshagent(credentials: ['github-ssh']) {
 
-                    echo "========================================"
-                    echo "Updating GitOps Configuration"
-                    echo "========================================"
+                        sh '''
 
-                    echo "Updating ExternalDNS IAM Role..."
+                        echo "========================================"
+                        echo "Updating GitOps Configuration"
+                        echo "========================================"
 
-                    yq e -i '
-                    .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(EXTERNAL_DNS_ROLE)
-                    ' charts/external-dns/values.yaml
+                        echo "Updating ExternalDNS IAM Role..."
 
-                    echo "Updating AWS Load Balancer Controller IAM Role..."
+                        yq e -i '
+                        .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(EXTERNAL_DNS_ROLE)
+                        ' charts/external-dns/values.yaml
 
-                    yq e -i '
-                    .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(ALB_ROLE)
-                    ' charts/aws-load-balancer-controller/values.yaml
+                        echo "Updating AWS Load Balancer Controller IAM Role..."
 
-                    echo "Updating Networking ACM Certificate..."
+                        yq e -i '
+                        .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(ALB_ROLE)
+                        ' charts/aws-load-balancer-controller/values.yaml
 
-                    yq e -i '
-                    .alb.certificateArn = env(CERTIFICATE_ARN)
-                    ' charts/networking/values.yaml
+                        echo "Updating Networking ACM Certificate..."
 
-                    echo ""
-                    echo "Git Changes"
+                        yq e -i '
+                        .alb.certificateArn = env(CERTIFICATE_ARN)
+                        ' charts/networking/values.yaml
 
-                    git diff
+                        echo ""
+                        echo "Git Changes"
 
-                    git add .
+                        git diff
 
-                    if git diff --cached --quiet
-                    then
+                        git add .
 
-                        echo "No GitOps configuration changes detected."
+                        if git diff --cached --quiet
+                        then
 
-                    else
+                            echo "No GitOps configuration changes detected."
 
-                        git config user.email "jenkins@enterprise-platform.local"
-                        git config user.name "Jenkins"
+                        else
 
-                        git commit -m "Update infrastructure configuration"
+                            git config user.email "jenkins@enterprise-platform.local"
+                            git config user.name "Jenkins"
 
-                        git push origin main
+                            git commit -m "Update infrastructure configuration"
 
-                    fi
+                            git push origin main
 
-                    '''
+                        fi
+
+                        '''
+
+                    }
 
                 }
 
             }
 
-        }
+        }    
+        
 
         stage('Configure ArgoCD Repository') {
 

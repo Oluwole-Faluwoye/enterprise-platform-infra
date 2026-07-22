@@ -680,8 +680,26 @@ EOF
                 kubectl get applications -n argocd || true
 
                 echo ""
-                echo "Waiting for Applications to reconcile..."
-                sleep 30
+                echo "Waiting for ArgoCD Applications to become healthy..."
+
+                for i in $(seq 1 30); do
+
+                    kubectl get applications -n argocd \
+                    -o custom-columns=NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status
+
+                    NOT_READY=$(kubectl get applications -n argocd \
+                    -o jsonpath='{range .items[*]}{.status.health.status}{" "}{.status.sync.status}{"\n"}{end}' \
+                    | grep -v "Healthy Synced" || true)
+
+                    if [ -z "$NOT_READY" ]; then
+                        echo "All applications are Healthy and Synced."
+                        break
+                    fi
+
+                    echo "Applications still reconciling..."
+                    sleep 20
+
+                done
 
                 echo ""
                 echo "Application Status Summary"

@@ -82,6 +82,8 @@ module "secrets_manager" {
 
 module "iam_irsa" {
 
+  count = var.enable_eks ? 1 : 0
+
   source = "../../modules/iam-irsa"
 
   project = var.project_name

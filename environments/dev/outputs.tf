@@ -24,12 +24,6 @@ output "secret_arns" {
 
 }
 
-output "aws_load_balancer_controller_role_arn" {
-
-  value = module.iam_irsa.aws_load_balancer_controller_role_arn
-
-}
-
 output "hosted_zone_id" {
 
   value = module.route53.hosted_zone_id
@@ -58,8 +52,14 @@ output "certificate_domain" {
 
 }
 
+output "aws_load_balancer_controller_role_arn" {
+  value = var.enable_eks ? module.iam_irsa[0].aws_load_balancer_controller_role_arn : null
+}
+
 output "external_dns_role_arn" {
+  value = var.enable_eks ? module.iam_irsa[0].external_dns_role_arn : null
+}
 
-  value = module.iam_irsa.external_dns_role_arn
-
+output "vpc_id" {
+  value = data.terraform_remote_state.bootstrap.outputs.vpc_id
 }

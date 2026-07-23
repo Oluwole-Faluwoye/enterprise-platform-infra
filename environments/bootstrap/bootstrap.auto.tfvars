@@ -4,7 +4,7 @@ key_name = "us-east-1-key"
 
 enable_ecr         = true
 enable_jenkins     = true
-enable_nat_gateway = false
+enable_nat_gateway = true
 
 vpc_name = "devops-vpc"
 vpc_cidr = "10.0.0.0/16"

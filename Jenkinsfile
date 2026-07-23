@@ -23,7 +23,7 @@ pipeline {
 
         ARGOCD_HOSTNAME = "argocd.dev.dreammyles.online"
 
-        ARGOCD_CHART_VERSION = "8.3.2"
+        ARGOCD_CHART_VERSION = "10.2.0"
 
         K8S_API_CIDRS = '''[
       "174.2.8.121/32",
@@ -551,16 +551,29 @@ pipeline {
 
                 echo "Installing ArgoCD using GitOps values..."
 
-                helm upgrade --install argocd \
-                  argo/argo-cd \
-                  --version ${ARGOCD_CHART_VERSION}
-                  --namespace argocd \
-                  --create-namespace \
-                  --values gitops/charts/argocd/values.yaml \
-                  --wait \
-                  --timeout 15m
+                if helm status argocd -n argocd >/dev/null 2>&1; then
+                    echo "ArgoCD already installed."
 
-                echo "Installed ArgoCD"  
+                    helm upgrade argocd \
+                      argo/argo-cd \
+                      --namespace argocd \
+                      --version ${ARGOCD_CHART_VERSION} \
+                      --values gitops/charts/argocd/values.yaml \
+                      --wait \
+                      --timeout 15m
+
+                else
+                    echo "Installing ArgoCD..."
+
+                    helm install argocd \
+                      argo/argo-cd \
+                      --namespace argocd \
+                      --create-namespace \
+                      --version ${ARGOCD_CHART_VERSION} \
+                      --values gitops/charts/argocd/values.yaml \
+                      --wait \
+                      --timeout 15m
+                fi  
 
                 '''
             }

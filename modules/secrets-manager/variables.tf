@@ -9,12 +9,9 @@ variable "environment" {
 }
 
 variable "secrets" {
-
   description = "Secrets to create"
 
   type = map(object({
-
     description = string
-
   }))
 }

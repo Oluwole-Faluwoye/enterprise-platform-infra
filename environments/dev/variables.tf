@@ -42,3 +42,22 @@ variable "domain_name" {
   type = string
 
 }
+
+variable "external_dns_namespace" {
+
+  description = "Namespace where ExternalDNS is deployed"
+
+  type = string
+
+  default = "kube-system"
+}
+
+variable "external_dns_service_account" {
+
+  description = "ExternalDNS Service Account"
+
+  type = string
+
+  default = "external-dns"
+
+}

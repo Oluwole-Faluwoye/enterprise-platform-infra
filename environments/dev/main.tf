@@ -98,6 +98,10 @@ module "iam_irsa" {
 
   hosted_zone_id = module.route53.hosted_zone_id
 
+  external_dns_namespace       = var.external_dns_namespace
+  
+  external_dns_service_account = var.external_dns_service_account
+
 }
 
 module "route53" {

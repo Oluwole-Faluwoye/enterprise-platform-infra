@@ -110,13 +110,76 @@ For development environments, populate the secrets using the bootstrap script.
 
 Navigate to the development environment.
 
+-----------------------------------------------------------
+
+If you have created the secret operators before and you deleted them, they usually do not delete automatically, they are often scheduled for deletion and this affects your pipeline, i.e your pipeline would fail at that point, what you have to do is restore the secrets from deletion and then copy the state of the secrets into the state file before running the bootstrap-secrets.sh .. the commands are as follows : 
+
+----------------------------------------------------------------------------
+This restores the secrets
+-----------------------------------------------------------------------------
+
+aws secretsmanager restore-secret \
+  --secret-id enterprise-platform/dev/auth-service
+
+aws secretsmanager restore-secret \
+  --secret-id enterprise-platform/dev/grafana/admin
+
+aws secretsmanager restore-secret \
+  --secret-id enterprise-platform/dev/alertmanager
+
+-------------------------------------------------------------------------
+verify they are back 
+-------------------------------------------------------------
+
+aws secretsmanager describe-secret \
+  --secret-id enterprise-platform/dev/auth-service
+
+aws secretsmanager describe-secret \
+  --secret-id enterprise-platform/dev/grafana/admin
+
+aws secretsmanager describe-secret \
+  --secret-id enterprise-platform/dev/alertmanager
+
+
+-----------------------------------------------------------------------------------------
+This imports them into the statefile
+-----------------------------------------------------------------
+
+terraform import \
+'module.secrets_manager.aws_secretsmanager_secret.this["auth-service"]' \
+enterprise-platform/dev/auth-service
+
+terraform import \
+'module.secrets_manager.aws_secretsmanager_secret.this["grafana/admin"]' \
+enterprise-platform/dev/grafana/admin
+
+terraform import \
+'module.secrets_manager.aws_secretsmanager_secret.this["alertmanager"]' \
+enterprise-platform/dev/alertmanager
+------------------------------------------------------------------------
+Verify Imports
+----------------------------------------------------------
+
+terraform state list | grep secretsmanager
+
+
+-------------------------------------------------------------------
+You should see something similar to this : 
+---------------------------------------------
+
+module.secrets_manager.aws_secretsmanager_secret.this["auth-service"]
+module.secrets_manager.aws_secretsmanager_secret.this["grafana/admin"]
+module.secrets_manager.aws_secretsmanager_secret.this["alertmanager"]
+
+
+
 
 cd environments/dev
 
 
 Run:
 
-bash ./bootstrap-secrets.sh
+./bootstrap-secrets.sh
 
 
 The script inserts the initial secret values into AWS Secrets Manager.
@@ -134,7 +197,13 @@ aws secretsmanager get-secret-value \
 
 The command should return the JSON stored in the secret.
 
----
+-------------------------------------
+Update your kubeconfig
+-----------------------------------
+
+aws eks update-kubeconfig \
+  --region us-east-1 \
+  --name devops-cluster
 
 # External Secrets Synchronization
 

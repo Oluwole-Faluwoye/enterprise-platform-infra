@@ -296,6 +296,8 @@ Promtail was successfully scraping logs.
 Loki was indexing log metadata.
 Grafana could query the Loki index.
 The complete logging pipeline was operational.
+
+
 12.17 Credentials and Administrative Access
 Grafana
 Port Forward
@@ -320,6 +322,8 @@ kubectl get secret grafana-secret -n monitoring -o jsonpath="{.data.password}" |
 Current password used during implementation:
 
 AdminAdmin
+
+
 ArgoCD
 Port Forward
 kubectl port-forward svc/argocd-server -n argocd 8080:443
@@ -335,6 +339,8 @@ admin
 Retrieve password:
 
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+ignore the security certificate and continue 
 12.18 Lessons Learned
 
 Several important engineering lessons were learned during this implementation.

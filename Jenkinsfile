@@ -21,6 +21,10 @@ pipeline {
 
         TF_ENV = "dev"
 
+        ARGOCD_HOSTNAME = "argocd.dev.dreammyles.online"
+
+        ARGOCD_CHART_VERSION = "8.3.2"
+
         K8S_API_CIDRS = '''[
       "174.2.8.121/32",
       "70.64.74.185/32"
@@ -385,70 +389,6 @@ pipeline {
             }
         }
 
-        stage('Install ArgoCD') {
-
-            when {
-
-                expression {
-
-                    return params.APPLY_CHANGES
-                }
-            }
-
-            steps {
-
-                sh '''
-
-                helm repo add argo https://argoproj.github.io/argo-helm
-
-                helm repo update
-
-                helm upgrade --install argocd \
-                  argo/argo-cd \
-                  --namespace argocd \
-                  --create-namespace \
-                  --wait \
-                  --timeout 10m
-
-                '''
-            }
-        }
-
-        stage('Wait For ArgoCD') {
-
-            when {
-
-                expression {
-
-                    return params.APPLY_CHANGES
-                }
-            }
-
-            steps {
-
-                sh '''
-
-                echo "Checking ArgoCD pods..." 
-                
-                kubectl get pods -n argocd 
-                
-                echo "Waiting for ArgoCD Server..."
-
-
-                kubectl wait \
-                  --for=condition=available \
-                  deployment/argocd-server \
-                  -n argocd \
-                  --timeout=600s
-                
-                echo "ArgoCD is ready."
-
-                kubectl get pods -n argocd
-            
-
-                '''
-            }
-        }
 
         stage('Checkout GitOps Repo') {
 
@@ -542,6 +482,22 @@ pipeline {
                         .alb.certificateArn = env(CERTIFICATE_ARN)
                         ' charts/networking/values.yaml
 
+                        echo "Updating ArgoCD ACM Certificate..."
+
+                        yq e -i '
+                        .server.ingress.annotations."alb.ingress.kubernetes.io/certificate-arn" = env(CERTIFICATE_ARN)
+                        ' charts/argocd/values.yaml
+
+                        echo "Updating ArgoCD Hostname..."
+
+                        yq e -i '
+                        .server.ingress.hostname = env(ARGOCD_HOSTNAME)
+                        ' charts/argocd/values.yaml
+
+                        yq e -i '
+                        .server.ingress.annotations."external-dns.alpha.kubernetes.io/hostname" = env(ARGOCD_HOSTNAME)
+                        ' charts/argocd/values.yaml
+
                         echo ""
                         echo "Git Changes"
 
@@ -575,6 +531,77 @@ pipeline {
 
         }    
         
+        stage('Install ArgoCD') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
+            steps {
+
+                sh '''
+
+                helm repo add argo https://argoproj.github.io/argo-helm
+
+                helm repo update
+
+                echo "Installing ArgoCD using GitOps values..."
+
+                helm upgrade --install argocd \
+                  argo/argo-cd \
+                  --version ${ARGOCD_CHART_VERSION}
+                  --namespace argocd \
+                  --create-namespace \
+                  --values gitops/charts/argocd/values.yaml \
+                  --wait \
+                  --timeout 15m
+
+                echo "Installed ArgoCD"  
+
+                '''
+            }
+        }
+
+        stage('Wait For ArgoCD') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
+            steps {
+
+                sh '''
+
+                echo "Checking ArgoCD pods..." 
+                
+                kubectl get pods -n argocd 
+                
+                echo "Waiting for ArgoCD Server..."
+
+
+                kubectl wait \
+                  --for=condition=available \
+                  deployment/argocd-server \
+                  -n argocd \
+                  --timeout=600s
+                
+                echo "ArgoCD is ready."
+
+                kubectl get pods -n argocd
+            
+
+                '''
+            }
+        }
+
 
         stage('Configure ArgoCD Repository') {
 

@@ -88,8 +88,7 @@ variable "external_dns_namespace" {
 
   type = string
 
-  default = "external-dns"
-
+  default = "kube-system"
 }
 
 variable "external_dns_service_account" {

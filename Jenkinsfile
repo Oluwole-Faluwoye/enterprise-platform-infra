@@ -243,6 +243,137 @@ pipeline {
             }
         }
 
+        stage('Recover Existing Secrets') {
+
+            when {
+
+                expression {
+                    return params.APPLY_CHANGES
+                }
+
+            }
+
+            steps {
+
+                dir("environments/${TF_ENV}") {
+
+                    timeout(time: 5, unit: 'MINUTES') {
+
+                        sh '''
+
+                        set -e
+
+                        echo "========================================"
+                        echo "Recovering Existing Secrets"
+                        echo "========================================"
+
+                        recover_secret() {
+
+                            TF_ADDRESS="$1"
+                            SECRET_NAME="$2"
+
+                            echo ""
+                            echo "----------------------------------------"
+                            echo "Checking Secret"
+                            echo "Terraform Address : $TF_ADDRESS"
+                            echo "AWS Secret        : $SECRET_NAME"
+                            echo "----------------------------------------"
+
+                            #
+                            # Already managed by Terraform?
+                            #
+                            if terraform state show "$TF_ADDRESS" >/dev/null 2>&1; then
+                                echo "✓ Already managed by Terraform."
+                                return
+                            fi
+
+                            #
+                            # Does it exist in AWS?
+                            #
+                            if aws secretsmanager describe-secret \
+                                --secret-id "$SECRET_NAME" >/dev/null 2>&1; then
+
+                                echo "✓ Secret exists in AWS."
+
+                                #
+                                # Is it scheduled for deletion?
+                                #
+                                DELETED=$(aws secretsmanager describe-secret \
+                                    --secret-id "$SECRET_NAME" \
+                                    --query DeletedDate \
+                                    --output text)
+
+                                if [ "$DELETED" != "None" ] && [ "$DELETED" != "null" ]; then
+
+                                    echo "Secret is scheduled for deletion."
+                                    echo "Restoring..."
+
+                                    aws secretsmanager restore-secret \
+                                        --secret-id "$SECRET_NAME"
+
+                                    echo "✓ Secret restored."
+
+                                fi
+
+                                echo "Importing into Terraform state..."
+
+                                if terraform import \
+                                    "$TF_ADDRESS" \
+                                    "$SECRET_NAME"
+                                then
+
+                                    echo "✓ Import successful."
+
+                                else
+
+                                    echo ""
+                                    echo "========================================"
+                                    echo "ERROR: Failed to import $SECRET_NAME"
+                                    echo "========================================"
+                                    exit 1
+
+                                fi
+
+                            else
+
+                                echo "Secret does not exist in AWS."
+                                echo "Terraform will create it during apply."
+
+                            fi
+
+                        }
+
+                        #
+                        # Recover all managed secrets
+                        #
+
+                        recover_secret \
+                        'module.secrets_manager.aws_secretsmanager_secret.this["auth-service"]' \
+                        'enterprise-platform/dev/auth-service'
+
+                        recover_secret \
+                        'module.secrets_manager.aws_secretsmanager_secret.this["grafana/admin"]' \
+                        'enterprise-platform/dev/grafana/admin'
+
+                        recover_secret \
+                        'module.secrets_manager.aws_secretsmanager_secret.this["alertmanager"]' \
+                        'enterprise-platform/dev/alertmanager'
+
+                        echo ""
+                        echo "========================================"
+                        echo "Secret recovery complete."
+                        echo "========================================"
+
+                        '''
+
+                    }
+
+                }
+
+            }
+
+        }
+
         stage('Terraform Apply') {
 
             when {
@@ -524,19 +655,33 @@ pipeline {
                         done
 
                         echo ""
-                        echo "Validating certificate references..."
+                        echo "Validating deployed certificate references..."
 
-                        WRONG=$(git grep "certificate-arn" | grep -v "$CERTIFICATE_ARN" || true)
+                        FILES=$(grep -rl "alb.ingress.kubernetes.io/certificate-arn" charts)
 
-                        if [ -n "$WRONG" ]; then
-                            echo "========================================"
-                            echo "ERROR: Found outdated certificate references"
-                            echo "========================================"
-                            echo "$WRONG"
-                            exit 1
-                        fi
+                        for file in $FILES
+                        do
+                            CURRENT=$(yq e '
+                            ..
+                            | select(
+                                type == "!!map" and
+                                has("alb.ingress.kubernetes.io/certificate-arn")
+                            )
+                            ."alb.ingress.kubernetes.io/certificate-arn"
+                            ' "$file")
 
-                        echo "All certificate references are using the current ACM certificate."
+                            if [ "$CURRENT" != "$CERTIFICATE_ARN" ]; then
+                                echo "========================================"
+                                echo "ERROR: Incorrect certificate found"
+                                echo "========================================"
+                                echo "File     : $file"
+                                echo "Expected : $CERTIFICATE_ARN"
+                                echo "Found    : $CURRENT"
+                                exit 1
+                            fi
+                        done
+
+                        echo "All deployed resources reference the correct ACM certificate."
 
                         echo ""
                         echo "Git Changes"

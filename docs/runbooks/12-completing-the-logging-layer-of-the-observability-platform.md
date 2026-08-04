@@ -298,7 +298,7 @@ Grafana could query the Loki index.
 The complete logging pipeline was operational.
 
 
-12.17 Credentials and Administrative Access
+12.17 Credentials and Administrative Access   ( Before we added Ingress ... Ingress helps us to expose the app to the internet  we are using port forward here beause we havent added ingress but we will add it son in the project )
 Grafana
 Port Forward
 kubectl port-forward -n monitoring svc/prometheus-stack-grafana 3000:80

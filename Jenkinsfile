@@ -498,6 +498,46 @@ pipeline {
                         .server.ingress.annotations."external-dns.alpha.kubernetes.io/hostname" = env(ARGOCD_HOSTNAME)
                         ' charts/argocd/values.yaml
 
+                        echo "========================================"
+                        echo "Updating ACM certificates across GitOps"
+                        echo "========================================"
+
+                        grep -rl "alb.ingress.kubernetes.io/certificate-arn" charts | while read file
+                        do
+                            # ArgoCD is already updated above
+                            if [ "$file" = "charts/argocd/values.yaml" ]; then
+                                continue
+                            fi
+
+                            echo "Updating certificate ARN in $file"
+
+                            yq e -i '
+                            (
+                            .. |
+                            select(
+                                type == "!!map" and
+                                has("alb.ingress.kubernetes.io/certificate-arn")
+                            )
+                            )."alb.ingress.kubernetes.io/certificate-arn" = env(CERTIFICATE_ARN)
+                            ' "$file"
+
+                        done
+
+                        echo ""
+                        echo "Validating certificate references..."
+
+                        WRONG=$(git grep "certificate-arn" | grep -v "$CERTIFICATE_ARN" || true)
+
+                        if [ -n "$WRONG" ]; then
+                            echo "========================================"
+                            echo "ERROR: Found outdated certificate references"
+                            echo "========================================"
+                            echo "$WRONG"
+                            exit 1
+                        fi
+
+                        echo "All certificate references are using the current ACM certificate."
+
                         echo ""
                         echo "Git Changes"
 
@@ -515,7 +555,7 @@ pipeline {
                             git config user.email "jenkins@enterprise-platform.local"
                             git config user.name "Jenkins"
 
-                            git commit -m "Update infrastructure configuration"
+                            git commit -m "Update GitOps configuration from Terraform outputs"
 
                             git push origin main
 

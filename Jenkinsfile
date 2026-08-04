@@ -222,27 +222,6 @@ pipeline {
             }
         }
 
-        stage('Manual Approval') {
-
-            when {
-
-                expression {
-
-                    return params.APPLY_CHANGES
-                }
-            }
-
-            steps {
-
-                input(
-
-                    message: 'Approve Terraform Apply?',
-
-                    ok: 'Apply'
-                )
-            }
-        }
-
         stage('Recover Existing Secrets') {
 
             when {
@@ -372,6 +351,27 @@ pipeline {
 
             }
 
+        }
+
+        stage('Manual Approval') {
+
+            when {
+
+                expression {
+
+                    return params.APPLY_CHANGES
+                }
+            }
+
+            steps {
+
+                input(
+
+                    message: 'Approve Terraform Apply?',
+
+                    ok: 'Apply'
+                )
+            }
         }
 
         stage('Terraform Apply') {

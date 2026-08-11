@@ -196,32 +196,6 @@ pipeline {
             }
         }
 
-        stage('Terraform Plan') {
-
-            steps {
-
-                dir("environments/${TF_ENV}") {
-
-                    sh '''
-
-                    terraform plan \
-                      -out=tfplan
-
-                    '''
-                }
-            }
-        }
-
-        stage('Archive Plan') {
-
-            steps {
-
-                archiveArtifacts(
-                    artifacts: "environments/${TF_ENV}/tfplan"
-                )
-            }
-        }
-
         stage('Recover Existing Secrets') {
 
             when {
@@ -351,6 +325,32 @@ pipeline {
 
             }
 
+        }
+
+        stage('Terraform Plan') {
+
+            steps {
+
+                dir("environments/${TF_ENV}") {
+
+                    sh '''
+
+                    terraform plan \
+                      -out=tfplan
+
+                    '''
+                }
+            }
+        }
+
+        stage('Archive Plan') {
+
+            steps {
+
+                archiveArtifacts(
+                    artifacts: "environments/${TF_ENV}/tfplan"
+                )
+            }
         }
 
         stage('Manual Approval') {

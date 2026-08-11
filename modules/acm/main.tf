@@ -17,43 +17,44 @@ resource "aws_acm_certificate" "platform" {
   }
 
   tags = local.common_tags
+}
 
+locals {
+  certificate_domains = [
+    "*.dev.${var.domain_name}",
+    "dev.${var.domain_name}"
+  ]
 }
 
 resource "aws_route53_record" "validation" {
 
-  for_each = {
-
-    for dvo in aws_acm_certificate.platform.domain_validation_options :
-
-    dvo.domain_name => {
-
-      name = dvo.resource_record_name
-
-      record = dvo.resource_record_value
-
-      type = dvo.resource_record_type
-
-    }
-
-  }
+  for_each = toset(local.certificate_domains)
 
   allow_overwrite = true
 
   zone_id = var.hosted_zone_id
 
-  name = each.value.name
+  name = one([
+    for dvo in aws_acm_certificate.platform.domain_validation_options :
+    dvo.resource_record_name
+    if dvo.domain_name == each.key
+  ])
 
-  type = each.value.type
+  type = one([
+    for dvo in aws_acm_certificate.platform.domain_validation_options :
+    dvo.resource_record_type
+    if dvo.domain_name == each.key
+  ])
 
   ttl = 60
 
   records = [
-
-    each.value.record
-
+    one([
+      for dvo in aws_acm_certificate.platform.domain_validation_options :
+      dvo.resource_record_value
+      if dvo.domain_name == each.key
+    ])
   ]
-
 }
 
 resource "aws_acm_certificate_validation" "platform" {
@@ -61,11 +62,7 @@ resource "aws_acm_certificate_validation" "platform" {
   certificate_arn = aws_acm_certificate.platform.arn
 
   validation_record_fqdns = [
-
     for record in aws_route53_record.validation :
-
     record.fqdn
-
   ]
-
 }

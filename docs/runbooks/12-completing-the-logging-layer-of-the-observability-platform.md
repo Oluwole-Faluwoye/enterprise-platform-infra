@@ -335,6 +335,8 @@ https://localhost:8080
 Username:
 
 admin
+-----------------------------------------------------------------
+Argocd Pword retrieval
 
 Retrieve password:
 

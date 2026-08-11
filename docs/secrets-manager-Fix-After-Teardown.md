@@ -171,7 +171,12 @@ module.secrets_manager.aws_secretsmanager_secret.this["auth-service"]
 module.secrets_manager.aws_secretsmanager_secret.this["grafana/admin"]
 module.secrets_manager.aws_secretsmanager_secret.this["alertmanager"]
 
+---------------------------------------------------------------------------------
 
+PLS NOTE: WE have automated the secret import into the statefile inside the Jenkinsfile so you do not need to do the above..   
+
+If creating the environment for the first time, then you need to do the following once.Put the secret values inside the secrets that were created. If you are restoring the secrets then you do not need to run the boostrap secret script.
+-----------------------------------------------------------------------------------------------------
 
 
 cd environments/dev

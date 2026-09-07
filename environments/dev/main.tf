@@ -76,34 +76,6 @@ module "eks" {
 }
 
 # =========================================================
-# JENKINS → EKS API
-# =========================================================
-#
-# Jenkins is still a Bootstrap resource.
-#
-# NOTE:
-# This SG relationship only works if Jenkins and EKS have
-# network reachability. See migration note below.
-# =========================================================
-
-resource "aws_security_group_rule" "jenkins_to_eks" {
-  count = var.enable_eks ? 1 : 0
-
-  type = "ingress"
-
-  from_port = 443
-  to_port   = 443
-
-  protocol = "tcp"
-
-  security_group_id = module.eks[0].cluster_security_group_id
-
-  source_security_group_id = data.terraform_remote_state.bootstrap.outputs.jenkins_security_group_id
-
-  description = "Allow Jenkins to access EKS API"
-}
-
-# =========================================================
 # SECRETS MANAGER
 # =========================================================
 

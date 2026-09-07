@@ -5,11 +5,11 @@ locals {
     service_name => {
       service_name  = request.service_name
       database_name = request.database_name
-      team      = request.team
-      namespace = request.namespace
-      mode   = request.mode
-      action = request.action
-      access = request.access
+      team          = request.team
+      namespace     = request.namespace
+      mode          = request.mode
+      action        = request.action
+      access        = request.access
 
       approval_required = request.approval_required
 

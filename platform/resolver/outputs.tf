@@ -130,7 +130,7 @@ output "shared_database_requests" {
 
 output "database_access_requests" {
 
-   description = "Normalized database access requests for existing and shared databases"
+  description = "Normalized database access requests for existing and shared databases"
 
   value = local.access_requests
 

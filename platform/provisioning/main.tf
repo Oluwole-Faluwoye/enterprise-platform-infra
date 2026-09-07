@@ -170,8 +170,8 @@ module "database_secret_resolution" {
   project     = var.project
   environment = var.environment
 
-  access_decisions          = module.database_access.access_decisions
-  database_secret_registry  = var.database_secret_registry
+  access_decisions         = module.database_access.access_decisions
+  database_secret_registry = var.database_secret_registry
 }
 
 # =========================================================

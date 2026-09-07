@@ -46,7 +46,7 @@ variable "secret_resolutions" {
       reader_endpoint   = optional(string)
       security_group_id = string
       subnet_group_name = optional(string)
-      status             = string
+      status            = string
       management_mode   = string
     })
 

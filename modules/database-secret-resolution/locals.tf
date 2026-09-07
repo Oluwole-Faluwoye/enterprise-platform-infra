@@ -5,8 +5,8 @@ locals {
       service_name      = decision.service_name
       database_name     = decision.database_name
       access            = decision.access
-      team      = decision.team
-      namespace = decision.namespace
+      team              = decision.team
+      namespace         = decision.namespace
       mode              = decision.mode
       approval_required = decision.approval_required
 

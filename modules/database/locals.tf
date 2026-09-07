@@ -198,12 +198,12 @@ locals {
   # =========================================================
 
   database_identifier = lower(
-  replace(
-    "${var.project}-${var.environment}-${var.database_name}",
-    "_",
-    "-"
+    replace(
+      "${var.project}-${var.environment}-${var.database_name}",
+      "_",
+      "-"
+    )
   )
-)
 
   subnet_group_name = lower(
     replace(

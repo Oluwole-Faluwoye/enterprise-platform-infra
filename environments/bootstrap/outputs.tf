@@ -41,3 +41,37 @@ output "public_subnets" {
 output "jenkins_security_group_id" {
   value = var.enable_jenkins ? module.jenkins[0].security_group_id : null
 }
+
+output "database_subnets" {
+  description = "Database subnet IDs"
+  value       = module.vpc.database_subnets
+}
+
+output "public_route_table_ids" {
+  value = module.vpc.public_route_table_ids
+}
+
+output "private_route_table_ids" {
+  value = module.vpc.private_route_table_ids
+}
+
+# =========================================================
+# DATABASE REGISTRY
+# =========================================================
+
+output "database_registry_table_name" {
+
+  description = "Persistent platform database registry table"
+
+  value = module.database_registry_store.table_name
+
+}
+
+
+output "database_registry_table_arn" {
+
+  description = "Persistent platform database registry table ARN"
+
+  value = module.database_registry_store.table_arn
+
+}

@@ -6,6 +6,12 @@ variable "subnet_ids" {
   description = "Private subnets used by EKS nodes"
 }
 
+variable "kubernetes_version" {
+  description = "Kubernetes version for the EKS cluster"
+  type        = string
+  default     = "1.33"
+}
+
 variable "jenkins_role_arn" {
   description = "Jenkins role allowed to administer EKS"
   type        = string
@@ -26,3 +32,4 @@ variable "terraform_role_arn" {
   type        = string
   default     = null
 }
+

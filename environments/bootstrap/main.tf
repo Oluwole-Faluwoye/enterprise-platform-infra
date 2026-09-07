@@ -1,4 +1,7 @@
-# VPC
+# =========================================================
+# BOOTSTRAP VPC
+# =========================================================
+
 module "vpc" {
   source = "../../modules/networking"
 
@@ -7,9 +10,14 @@ module "vpc" {
 
   azs = var.azs
 
-  public_subnets     = var.public_subnets
-  private_subnets    = var.private_subnets
+  public_subnets  = var.public_subnets
+  private_subnets = var.private_subnets
+
+  database_subnets = var.database_subnets
+
   enable_nat_gateway = var.enable_nat_gateway
+
+  enable_kubernetes_tags = false
 }
 
 
@@ -64,5 +72,28 @@ module "iam_bootstrap" {
   admin_user_arn = var.admin_user_arn
 
   jenkins_role_arn = module.jenkins[0].jenkins_role_arn
+
+}
+
+# =========================================================
+# DATABASE REGISTRY STORE
+# =========================================================
+#
+# The database registry is platform foundation infrastructure.
+#
+# It belongs to bootstrap rather than an individual environment
+# so that destroying DEV/STAGING/PROD does not destroy the
+# authoritative registry.
+# =========================================================
+
+module "database_registry_store" {
+
+  source = "../../modules/database-registry-store"
+
+  project = "enterprise-platform"
+
+  environment = "bootstrap"
+
+  table_name = "enterprise-platform-database-registry"
 
 }

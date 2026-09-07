@@ -17,6 +17,11 @@ output "cluster_security_group_id" {
   value       = module.eks.cluster_security_group_id
 }
 
+output "node_group_security_group_id" {
+  description = "Security Group ID used by EKS worker nodes"
+  value       = module.eks.node_security_group_id
+}
+
 output "cluster_arn" {
   description = "EKS Cluster ARN"
   value       = module.eks.cluster_arn
@@ -35,4 +40,9 @@ output "oidc_provider" {
 output "node_group_role_arn" {
   description = "Node Group IAM Role ARN"
   value       = module.eks.eks_managed_node_groups["devops_nodes"].iam_role_arn
+}
+
+variable "cluster_name" {
+  description = "EKS cluster name"
+  type        = string
 }

@@ -5,20 +5,21 @@
 module "eks" {
 
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"
+  version = "~> 21.0"
 
-  cluster_name = "devops-cluster"
+  name = var.cluster_name
+  kubernetes_version = var.kubernetes_version
 
   vpc_id     = var.vpc_id
   subnet_ids = var.subnet_ids
 
-  cluster_endpoint_public_access       = true
-  cluster_endpoint_private_access      = true
-  cluster_endpoint_public_access_cidrs = var.allowed_k8s_api_cidrs
+  endpoint_public_access       = true
+  endpoint_private_access      = true
+  endpoint_public_access_cidrs = var.allowed_k8s_api_cidrs
 
   enable_cluster_creator_admin_permissions = false
 
-  cluster_addons = {
+  addons = {
     coredns = {
       most_recent = true
     }

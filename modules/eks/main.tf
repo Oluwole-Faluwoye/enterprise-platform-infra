@@ -86,8 +86,8 @@ module "eks" {
 
       name = "devops-nodes"
 
-      desired_size = 1
-      max_size     = 1
+      desired_size = 3
+      max_size     = 3
       min_size     = 1
 
       instance_types = ["t3.medium"]

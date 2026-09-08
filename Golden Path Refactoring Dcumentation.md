@@ -1800,3 +1800,670 @@ The latest provisioning test validates successfully and produces:
 0 to destroy
 
 without applying infrastructure.
+
+62. Live DEV Infrastructure Implementation
+
+The previous milestone successfully validated the Resolver, Provisioner, and Database Creation Golden Path using a fake environment context and a Terraform plan that produced 16 resources without applying them. The next phase moved from structural validation to live AWS infrastructure validation.
+
+The objective was to prove that the platform architecture could operate against a real environment while preserving the separation between Bootstrap, environment infrastructure, platform provisioning, and application delivery.
+
+The implementation therefore introduced the DEV runtime temporarily, validated the Kubernetes/GitOps platform, validated auth-service connectivity, and then deliberately destroyed the expensive runtime resources while retaining the reusable DEV network foundation.
+
+63. DEV Environment Configuration
+
+The DEV environment was configured with:
+
+project_name = "enterprise-platform"
+environment = "dev"
+cluster_name = "enterprise-platform-dev"
+region = "us-east-1"
+VPC CIDR = 10.10.0.0/16
+
+The environment contains separate public, private, and database subnets. EKS worker nodes use the private subnets, while databases use the database subnets.
+
+64. Live EKS Implementation
+
+The EKS Golden Path was updated to the newer terraform-aws-modules/eks 21.x interface and the AWS provider 6.x generation. The EKS cluster was created as enterprise-platform-dev.
+
+The worker-node design was:
+
+Setting
+
+Value
+
+Node group
+
+devops-nodes
+
+Instance type
+
+t3.medium
+
+Capacity
+
+ON_DEMAND
+
+Minimum
+
+2
+
+Desired
+
+3
+
+Maximum
+
+3
+
+65. EKS Addon Ordering — VPC CNI Before Compute
+
+A deliberate implementation change was made to ensure the VPC CNI addon is provisioned before managed worker compute. The EKS configuration uses before_compute = true for vpc-cni.
+
+The reason is operational dependency ordering. Worker nodes require functional Kubernetes networking during bootstrap and operation. Establishing the CNI before compute reduces the risk that nodes are created before the cluster networking layer they depend on is ready.
+
+The EKS addon set also includes CoreDNS, kube-proxy, and aws-ebs-csi-driver. The EBS CSI driver is integrated with IAM-backed service-account access.
+
+66. EKS API Endpoint Design
+
+The cluster was configured with both public and private EKS API endpoint access. Public access is restricted through an explicit CIDR allow-list.
+
+This was an intentional alternative to creating permanent network connectivity between Bootstrap and DEV. Jenkins can reach the EKS API over HTTPS 443 when its current public IP is included in the allow-list.
+
+67. EKS Access Troubleshooting
+
+During validation, kubectl initially returned credential errors because the local AWS authentication context was not using the expected deployment role. The AWS profile was corrected to assume the Terraform deployment role, and STS identity was verified.
+
+After correcting the identity path, the workstation could authenticate to the EKS API and use kubectl successfully.
+
+The EKS access model therefore remained explicit: deployment roles receive cluster access through EKS access entries rather than relying on the identity that happened to create the cluster.
+
+68. EKS Node Group Failure
+
+The first live apply encountered a managed node-group failure. The node group entered CREATE_FAILED with NodeCreationFailure and unhealthy nodes.
+
+At the same time, a separate Terraform resource failed while attempting to create a Jenkins-to-EKS security-group rule. These failures were deliberately treated as separate problems so that the node bootstrap failure was not incorrectly attributed to the security-group rule.
+
+The node group was subsequently recovered and stabilized. Worker nodes eventually reported Ready and the required system workloads became operational.
+
+69. Major Networking Error — Cross-VPC Security Group Reference
+
+69.1 What Happened
+
+Terraform attempted to create aws_security_group_rule.jenkins_to_eks by using the Jenkins security group as the source of an EKS security-group rule. AWS rejected the operation with an InvalidGroup.NotFound error indicating that the resources belonged to different networks.
+
+69.2 Root Cause
+
+Jenkins is located in the Bootstrap VPC, while EKS is located in the DEV VPC. Security groups are scoped to their VPC and cannot be directly referenced as though they were members of the same network.
+
+69.3 Architectural Response
+
+The invalid Jenkins-to-EKS security-group rule was removed. VPC peering was considered but rejected. The platform already has a secure EKS API endpoint mechanism, so introducing peering would have added unnecessary network coupling between Bootstrap and every environment.
+
+The resulting design is:
+
+Bootstrap VPC / Jenkins
+        |
+        | HTTPS 443 over controlled public EKS API access
+        v
+DEV EKS API endpoint
+
+This preserves the intended VPC isolation while still allowing administrative access.
+
+70. Load Balancer Controller and VPC Discovery
+
+The AWS Load Balancer Controller was deployed through GitOps. An incorrect DEV VPC ID was initially present in the controller configuration, which caused subnet discovery problems.
+
+The actual DEV VPC ID was verified and the controller configuration was corrected. After the correction, the controller successfully reconciled the Kubernetes ingress resources and created the expected AWS ALBs.
+
+Two ingress paths were validated: ArgoCD and auth-service. ArgoCD returned HTTP 200 over HTTPS. auth-service first returned HTTP 503 because the backend was not healthy; after the backend recovered, the endpoint returned HTTP 404 from the application, proving that the request reached Spring Boot.
+
+The hard-coded VPC ID remains technical debt. It should later be derived from environment context so the GitOps configuration is reusable across environments.
+
+71. GitOps Platform Validation
+
+The live DEV cluster was used to validate the existing GitOps platform. ArgoCD managed the Kubernetes workloads, while Terraform remained responsible for AWS infrastructure.
+
+ArgoCD
+
+AWS Load Balancer Controller
+
+cert-manager
+
+External DNS
+
+External Secrets Operator
+
+Prometheus
+
+Alertmanager
+
+Grafana
+
+Loki
+
+Promtail
+
+kube-state-metrics
+
+AWS EBS CSI driver
+
+This validated the boundary already established in the architecture: Terraform provisions infrastructure; ArgoCD reconciles Kubernetes workloads.
+
+72. External Secrets Failure
+
+72.1 Initial Symptom
+
+auth-service pods entered CreateContainerConfigError because auth-service-secret did not exist. The ExternalSecret resources for auth-service, Grafana, and Alertmanager reported SecretSyncedError.
+
+72.2 Investigation
+
+The ClusterSecretStore and External Secrets Operator were operational. The problem was not the Kubernetes External Secrets installation itself. The AWS Secrets Manager objects existed but did not have an available AWSCURRENT version that the operator could retrieve.
+
+72.3 Why This Matters
+
+A Secrets Manager resource existing in AWS is not equivalent to having a usable secret value. The runtime flow requires an actual current secret version.
+
+72.4 Fix
+
+The environment bootstrap-secrets.sh workflow was executed to populate the auth-service, Grafana, and Alertmanager secret values. The ExternalSecret resources were then force-reconciled using a timestamp annotation.
+
+72.5 Result
+
+The ExternalSecrets changed to SecretSynced=True. Kubernetes Secrets were created for auth-service, Grafana, and Alertmanager. auth-service pods subsequently became Running.
+
+The intended runtime pattern remains:
+
+AWS Secrets Manager -> External Secrets Operator -> Kubernetes Secret -> Application
+
+73. Auth-Service End-to-End HTTP Validation
+
+The auth-service endpoint initially returned 503 while the backend was unhealthy. After the secret synchronization problem was fixed and the pod became healthy, the same endpoint returned an HTTP 404 JSON response.
+
+The 404 was interpreted correctly as an application-level response. It demonstrated that DNS, ALB, ingress, service routing, and the Spring Boot application were reachable. The requested route simply did not exist.
+
+This created a useful validation ladder:
+
+AWS infrastructure -> Kubernetes -> ingress -> ALB -> secret injection -> application -> database behavior
+
+74. Auth-Service Database Status
+
+The platform already has the Database Golden Path and database registry architecture described in the previous documentation. However, the current auth-service implementation has not yet been connected to a real PostgreSQL database.
+
+Repository inspection did not identify an implemented PostgreSQL/JDBC/JPA/Flyway/Liquibase persistence layer. Therefore the existing database-related environment variables are configuration plumbing, not proof of active database persistence.
+
+This is intentional for the next test: auth-service will become the real end-to-end consumer of the database provisioning platform.
+
+75. Alertmanager and Helm Rendering Fixes
+
+Helm configuration was changed to use tpl (.Files.Get ...) so embedded Helm expressions could be rendered.
+
+alertmanager.smtp values were added to avoid nil-pointer rendering failures.
+
+email.tmpl was created with email.subject and email.body after the template was undefined.
+
+The Alertmanager template mount path was corrected to /etc/alertmanager/configmaps/alertmanager-templates/.
+
+ExternalSecret YAML indentation was corrected when SMTP fields were added.
+
+helm lint and helm template were used to validate chart rendering.
+
+Sensitive SMTP values remain externalized in AWS Secrets Manager while GitOps controls configuration and templates.
+
+76. Monitoring Validation and Node Exporter Issue
+
+The monitoring stack became largely healthy. Prometheus, Alertmanager, Grafana, Loki, Promtail, and the associated operator components were running.
+
+Two node-exporter DaemonSet pods remained Pending. Scheduler events reported a combination of pod-capacity and NodeAffinity constraints. This was treated as a separate scheduling/capacity issue rather than a failure of the monitoring stack itself.
+
+The issue remains a follow-up item for the next EKS runtime window.
+
+77. DEV Runtime Shutdown Strategy
+
+After the live platform validation was completed, the DEV runtime was intentionally shut down to avoid paying for unused EKS and NAT resources.
+
+The environment was changed to:
+
+enable_eks = false
+enable_nat_gateway = false
+
+Terraform planned the destruction of the expensive runtime resources while retaining the DEV VPC and subnet foundation. The apply completed successfully with 55 resources destroyed.
+
+78. What Terraform Destroyed
+
+EKS cluster
+
+EKS managed node group
+
+EKS worker launch template/runtime resources
+
+EKS addons
+
+EKS cluster IAM/runtime resources
+
+EKS IRSA/OIDC-related runtime resources
+
+EKS cluster KMS resources
+
+EKS runtime security groups and rules
+
+EKS cluster CloudWatch log group
+
+DEV NAT Gateway
+
+NAT Gateway Elastic IP
+
+The final Terraform outputs showed enable_eks=false, cluster_name=null, OIDC values null, and an empty NAT Gateway list, while the VPC and subnet outputs remained.
+
+79. Manual Cleanup After EKS Destruction
+
+The EKS cluster being destroyed does not automatically guarantee that every AWS resource previously created by Kubernetes controllers has been removed. Two Kubernetes-created ALBs remained in the DEV VPC after Terraform finished destroying EKS.
+
+Those ALBs were manually deleted from AWS after confirming that the EKS runtime was gone.
+
+This established a practical operational rule: after destroying a Kubernetes cluster, verify controller-created AWS resources independently.
+
+80. EKS PVC EBS Volume Cleanup
+
+An EBS inventory identified four unattached volumes whose Name tags followed the pattern enterprise-platform-dev-dynamic-pvc-*. These were dynamic Kubernetes persistent volumes created during the DEV runtime.
+
+Because DEV was intentionally being shut down and the volumes were unattached, they were removed. A subsequent query for available EBS volumes returned no results.
+
+This cleanup was performed separately from the persistent Jenkins storage so that disposable DEV storage was not mistaken for Bootstrap data.
+
+81. Jenkins EBS Volumes and Network Interface
+
+Two 30 GiB EBS volumes remain attached to the stopped Jenkins EC2 instance. One is explicitly named jenkins-data-volume; the other has no Name tag. These were retained because they belong to the persistent Bootstrap Jenkins environment.
+
+The remaining network interface is the Jenkins EC2 instance's ENI in the Bootstrap VPC. It remains in-use by the stopped Jenkins instance and is therefore not an orphaned DEV EKS interface.
+
+The ENI itself is not an EKS resource and is not something that should be deleted merely because DEV EKS was shut down.
+
+82. Final Resource Lifecycle Model
+
+Resource
+
+Current state
+
+Lifecycle decision
+
+Bootstrap VPC
+
+Retained
+
+Persistent platform foundation
+
+Jenkins EC2
+
+Stopped
+
+Retained for current CI platform
+
+Jenkins EBS
+
+Retained
+
+Persistent Jenkins data
+
+Jenkins ENI
+
+Retained/in-use
+
+Belongs to Jenkins
+
+DEV VPC
+
+Retained
+
+Reusable environment foundation
+
+DEV subnets
+
+Retained
+
+Reusable environment foundation
+
+DEV EKS
+
+Destroyed
+
+Disposable runtime
+
+DEV NAT
+
+Destroyed
+
+Disposable/costly runtime
+
+DEV EKS PVC volumes
+
+Deleted
+
+Disposable runtime storage
+
+DEV Kubernetes ALBs
+
+Deleted
+
+Controller-created runtime resources
+
+83. What Has Been Proven by the Live Environment
+
+The project has now validated two previously separate layers of the platform.
+
+Layer 1 — Platform provisioning design:
+
+Service Contract -> Resolver -> normalized platform actions -> Provisioner -> Golden Paths -> Terraform resource graph
+
+Layer 2 — Live platform runtime:
+
+AWS environment -> EKS -> GitOps -> ingress/load balancing -> secrets -> auth-service -> HTTP response
+
+The next milestone is to join these two layers by making auth-service request and consume a real PostgreSQL database through the Service Contract.
+
+84. Next Objective — Provision PostgreSQL for auth-service
+
+The next test should use the existing platform architecture rather than introducing a new provisioning mechanism. auth-service will be the first service used to prove a complete infrastructure-to-application database lifecycle.
+
+Illustrative Service Contract:
+
+services:
+  auth-service:
+    runtime: spring-boot
+    team: auth
+    persistence:
+      enabled: true
+      mode: new
+      engine: postgres
+      size: small
+      database_name: authdb
+      access: read_write
+
+The exact contract syntax should remain aligned with the implementation already documented. The important principle is that the developer specifies intent, not AWS implementation details.
+
+85. Auth-Service Database Provisioning Flow
+
+The Service Contract declares that auth-service needs a new PostgreSQL database.
+
+The Resolver validates the contract.
+
+The Resolver derives namespace from team=auth.
+
+The Resolver converts persistence mode=new into action=create.
+
+The Resolver produces the normalized database creation request.
+
+The Provisioner consumes the resolved request and environment_context.
+
+The Application Security Group Golden Path supplies the application security-group ID.
+
+The Database Golden Path receives the environment VPC, database subnets, database name, engine, size, and application security-group ID.
+
+Terraform creates the PostgreSQL/RDS infrastructure.
+
+The database security group allows PostgreSQL access from the auth-service application security group.
+
+The database credentials are managed through AWS Secrets Manager rather than Git.
+
+The database registry records the logical database and physical AWS resource information.
+
+The secret-resolution path provides the required database connection information to the workload.
+
+External Secrets synchronizes the approved secret information into Kubernetes.
+
+auth-service is updated to implement actual PostgreSQL persistence.
+
+The application pipeline builds and deploys the updated auth-service image.
+
+ArgoCD reconciles the application into EKS.
+
+An end-to-end test creates and retrieves real application data from PostgreSQL.
+
+86. Expected Database Architecture
+
+                    Service Contract
+                           |
+                           v
+                        Resolver
+                           |
+                    action = create
+                           |
+                           v
+                      Provisioner
+                           |
+              +------------+-------------+
+              |                          |
+              v                          v
+       Application SG             Database Golden Path
+                                         |
+                              +----------+----------+
+                              |          |          |
+                              v          v          v
+                            RDS       DB SG     Subnet Group
+                              |
+                              v
+                       Database Registry
+                              |
+                              v
+                       Secrets Manager
+                              |
+                              v
+                    External Secrets
+                              |
+                              v
+                      Kubernetes Secret
+                              |
+                              v
+                        auth-service
+                              |
+                              v
+                     PostgreSQL/RDS
+
+87. Infrastructure Pipeline and Application Pipeline
+
+The platform must maintain two separate but connected pipelines.
+
+87.1 Infrastructure / Platform Pipeline
+
+Service Contract -> Git -> Platform Pipeline -> Resolver -> Provisioner -> Terraform -> AWS/EKS
+
+This pipeline is responsible for infrastructure changes such as requesting a database, secret, identity, network capability, or other platform resource.
+
+87.2 Application Delivery Pipeline
+
+Application Git -> Jenkins -> build/test/security scans -> Docker -> ECR -> GitOps repository -> ArgoCD -> EKS
+
+This pipeline is responsible for releasing application code. A normal application image release should not invoke Terraform simply because the container image changed.
+
+88. Why the Two Pipelines Matter
+
+The infrastructure lifecycle and application lifecycle operate at different speeds. Infrastructure changes require platform policy, Terraform planning, and potentially approval. Application releases should remain independent and use the established CI/CD and GitOps path.
+
+This separation also makes the eventual Backstage architecture cleaner: Backstage creates or updates the developer-facing Service Contract, while the platform automation determines and executes infrastructure changes.
+
+89. Database Access Golden Path After Database Creation
+
+Once auth-service database creation is proven, the existing existing/shared database access model can be completed.
+
+For existing/shared requests, the Resolver should continue to produce action=access rather than action=create.
+
+The intended flow is:
+
+Service Contract -> Resolver -> access request -> policy evaluation -> approval when required -> access provisioner
+
+This prevents services from accidentally creating duplicate databases when they only need access to a registered database.
+
+90. Security Model for Database Access
+
+The database architecture should continue to use multiple security layers:
+
+Network layer: application security group can reach database security group on TCP 5432.
+
+Workload identity layer: the application workload receives its intended AWS identity.
+
+Secrets layer: only the authorized workload/secret mechanism can retrieve the required credentials.
+
+Database authorization layer: PostgreSQL roles determine read versus read_write capabilities.
+
+This preserves the principle established in the previous documentation that access is not a single permission. Network connectivity, cloud identity, secret access, and database authorization are separate controls.
+
+91. Backstage Transition Plan
+
+Backstage remains the target developer-facing control plane, but it should be introduced after the underlying Service Contract and Golden Paths are proven against real infrastructure.
+
+The target flow is:
+
+Backstage -> Service Contract -> Git -> Platform Pipeline -> Resolver -> Policy/Approval -> Provisioner -> Terraform -> AWS/EKS
+
+Backstage should not become the place where AWS-specific implementation logic lives. Its responsibility is to provide a developer-friendly interface for expressing intent and submitting changes.
+
+92. Why Backstage Comes Last in This Phase
+
+The Service Contract must first be proven.
+
+The Resolver must correctly interpret the contract.
+
+The Provisioner must execute resolved actions.
+
+The Database Golden Path must create real infrastructure.
+
+Secret and workload access must work.
+
+auth-service must successfully persist data.
+
+Only then should Backstage be placed in front of the platform.
+
+This sequence reduces debugging complexity and prevents the developer portal from becoming a workaround for an unproven platform backend.
+
+93. Remaining Technical Debt
+
+Make the AWS Load Balancer Controller VPC configuration environment-derived instead of hard-coded.
+
+Investigate node-exporter scheduling/capacity constraints when EKS is recreated.
+
+Implement actual PostgreSQL persistence in auth-service.
+
+Execute the auth-service Service Contract against real DEV infrastructure.
+
+Complete database registry validation with a real RDS resource.
+
+Complete the database secret-resolution path with real application credentials.
+
+Validate least-privilege workload/secret access.
+
+Complete the Database Access Golden Path for existing/shared databases.
+
+Continue the planned Jenkins-to-GitHub-Actions migration without redesigning the platform.
+
+Introduce Backstage after the platform provisioning path is proven.
+
+94. Lessons Learned From the Live Implementation
+
+EKS addon ordering should be explicit when worker bootstrap depends on cluster networking.
+
+AWS resource relationships must respect service boundaries such as VPC-scoped security groups.
+
+VPC isolation should not be weakened simply because an administrative component needs access to the EKS API.
+
+A missing AWSCURRENT secret version can break Kubernetes workloads even when the Secrets Manager object itself exists.
+
+Kubernetes controllers can create AWS resources whose lifecycle needs independent post-destruction verification.
+
+A 404 from the application can be a successful infrastructure test when the goal is to prove end-to-end request reachability.
+
+Disposable DEV runtime and persistent Bootstrap infrastructure should have different lifecycle policies.
+
+Real infrastructure validation should follow successful fake-context Terraform tests, not replace them.
+
+The platform should absorb AWS implementation constraints rather than forcing those constraints into the developer-facing contract.
+
+The Resolver/Provisioner boundary must remain intact as more automation is added.
+
+95. Current Platform State
+
+BOOTSTRAP
+  VPC                    Retained
+  Jenkins                Stopped / retained
+  Jenkins EBS            Retained
+  Jenkins ENI            Retained
+  Terraform state        Retained
+  Shared foundation      Retained
+
+DEV FOUNDATION
+  VPC                    Retained
+  Public subnets         Retained
+  Private subnets        Retained
+  Database subnets       Retained
+
+DEV RUNTIME
+  EKS                    Destroyed after validation
+  NAT                    Destroyed after validation
+  ALBs                   Deleted after EKS shutdown
+  Dynamic PVC volumes    Deleted
+
+PLATFORM LOGIC
+  Resolver               Implemented
+  Provisioner             Implemented
+  Environment context     Implemented
+  Application SG path     Implemented
+  Database create path    Implemented / structurally validated
+  Database access path    Next implementation stage
+
+APPLICATION
+  auth-service            Live validation completed
+  PostgreSQL persistence  Not yet implemented
+
+DEVELOPER EXPERIENCE
+  Service Contract        Implemented conceptually / Git-based testable
+  Backstage               Target architecture / not yet introduced
+
+96. Current Milestone
+
+Milestone: Live DEV Platform Validation + Preparation for End-to-End Database Provisioning
+
+Status: SUCCESSFUL CHECKPOINT
+
+The platform has now moved beyond a Terraform-only design exercise. The live implementation validated the environment architecture, EKS, Kubernetes networking, access, GitOps, ingress, secrets delivery, application reachability, monitoring, and controlled environment shutdown.
+
+The next milestone is to connect the already-tested Database Creation Golden Path to the real auth-service Service Contract and prove actual PostgreSQL persistence end to end.
+
+97. Next Session Execution Plan
+
+Re-enable DEV EKS and NAT only for the controlled testing window.
+
+Validate EKS, addons, worker nodes, ArgoCD, External Secrets, ingress, and required platform services.
+
+Create the auth-service Service Contract with PostgreSQL persistence requirements.
+
+Run Terraform Resolver validation and inspect the normalized action.
+
+Confirm the Provisioner receives environment_context rather than Bootstrap internals.
+
+Provision PostgreSQL through the existing Database Golden Path.
+
+Validate the database security-group relationship with auth-service.
+
+Validate database registration and physical AWS identifiers.
+
+Validate Secrets Manager and External Secrets integration.
+
+Implement real PostgreSQL persistence in auth-service.
+
+Build and publish the updated application through Jenkins/ECR.
+
+Update the GitOps deployment and allow ArgoCD to reconcile.
+
+Run a real application persistence test.
+
+Document the complete end-to-end Golden Path.
+
+Then begin the Backstage implementation on top of the proven platform.
+
+98. Final Architectural Principle
+
+The architecture established in the previous documentation remains unchanged at its core:
+
+Developers describe intent. The Resolver interprets intent. Policy determines what is permitted. The Provisioner executes resolved decisions. Golden Paths implement infrastructure. Environments provide context and policy. Terraform manages infrastructure. ArgoCD manages Kubernetes workloads. Backstage will eventually provide the developer-facing control plane.
+
+The live implementation did not replace this architecture. It validated it under real AWS and Kubernetes conditions and identified the remaining work required to prove the complete database provisioning lifecycle.
+
+End of comprehensive continuation — 8 September 2026

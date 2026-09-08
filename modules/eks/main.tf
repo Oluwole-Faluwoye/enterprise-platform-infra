@@ -20,15 +20,16 @@ module "eks" {
   enable_cluster_creator_admin_permissions = false
 
   addons = {
+    vpc-cni = {
+      most_recent    = true
+      before_compute = true
+    }
+
     coredns = {
       most_recent = true
     }
 
     kube-proxy = {
-      most_recent = true
-    }
-
-    vpc-cni = {
       most_recent = true
     }
 
@@ -85,9 +86,9 @@ module "eks" {
 
       name = "devops-nodes"
 
-      desired_size = 3
-      max_size     = 3
-      min_size     = 2
+      desired_size = 1
+      max_size     = 1
+      min_size     = 1
 
       instance_types = ["t3.medium"]
 

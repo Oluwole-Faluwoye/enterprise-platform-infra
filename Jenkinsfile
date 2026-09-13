@@ -465,6 +465,11 @@ pipeline {
                             returnStdout: true
                         ).trim()
 
+                        env.DATABASE_CATALOG = sh(
+                            script: "terraform output -json database_catalog 2>/dev/null || echo '{}'",
+                            returnStdout: true
+                        ).trim()
+
                     }
 
                 }
@@ -675,6 +680,62 @@ pipeline {
                         else
                         echo "No auth-service database IAM role found; skipping workload identity configuration"
                         fi
+
+                        # -------------------------------------------------
+                        # Auth-service database contract
+                        # -------------------------------------------------
+
+                        AUTH_DB_HOST=$(echo "$DATABASE_CATALOG" | \
+                        jq -r '.authdb.endpoint // empty')
+
+                        AUTH_DB_PORT=$(echo "$DATABASE_CATALOG" | \
+                        jq -r '.authdb.port // empty')
+
+                        AUTH_DB_NAME=$(echo "$DATABASE_CATALOG" | \
+                        jq -r '.authdb.logical_name // empty')
+
+                        AUTH_DB_CREDENTIAL_REFERENCE=$(echo "$DATABASE_CATALOG" | \
+                        jq -r '.authdb.credentials.secret_arn // empty')
+
+                        if [ -n "$AUTH_DB_HOST" ] && \
+                           [ -n "$AUTH_DB_PORT" ] && \
+                           [ -n "$AUTH_DB_NAME" ] && \
+                           [ -n "$AUTH_DB_CREDENTIAL_REFERENCE" ]; then
+
+                            echo "Configuring auth-service database contract"
+
+                            yq e -i \
+                                '.database.enabled = true' \
+                                charts/auth-service/values-dev.yaml
+
+                            yq e -i \
+                                '.database.host = env(AUTH_DB_HOST)' \
+                                charts/auth-service/values-dev.yaml
+
+                            yq e -i \
+                                '.database.port = env(AUTH_DB_PORT)' \
+                                charts/auth-service/values-dev.yaml
+
+                            yq e -i \
+                                '.database.name = env(AUTH_DB_NAME)' \
+                                charts/auth-service/values-dev.yaml
+
+                            yq e -i \
+                                '.database.credentialReference = env(AUTH_DB_CREDENTIAL_REFERENCE)' \
+                                charts/auth-service/values-dev.yaml
+
+                            echo "auth-service database contract configured"
+                        else
+                            echo "Database catalog information for auth-service is incomplete"
+                            echo "Skipping database contract configuration"
+                        fi
+
+                        echo "Auth-service database configuration:"
+                        echo "  Host: $AUTH_DB_HOST"
+                        echo "  Port: $AUTH_DB_PORT"
+                        echo "  Name: $AUTH_DB_NAME"
+                        echo "  Credential reference: configured"
+                        
 
                         echo "========================================"
                         echo "Updating ACM certificates across GitOps"

@@ -657,7 +657,7 @@ pipeline {
                         # Database workload identity
                         # -------------------------------------------------
 
-                        AUTH_SERVICE_DB_ROLE_ARN=$(echo "$DATABASE_WORKLOAD_IAM_ROLE_ARNS" | \
+                        export AUTH_SERVICE_DB_ROLE_ARN=$(echo "$DATABASE_WORKLOAD_IAM_ROLE_ARNS" | \
                         jq -r '."auth-service" // empty')
 
                         if [ -n "$AUTH_SERVICE_DB_ROLE_ARN" ]; then

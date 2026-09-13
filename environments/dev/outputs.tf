@@ -110,3 +110,53 @@ output "environment_context" {
     oidc_provider     = var.enable_eks ? module.eks[0].oidc_provider : null
   }
 }
+
+output "database_catalog" {
+  description = "Authoritative database catalog produced by platform provisioning"
+  value       = module.provisioning.database_catalog
+}
+
+output "database_created_this_run" {
+  description = "Databases created during the current provisioning run"
+  value       = module.provisioning.database_created_this_run
+}
+
+output "database_secret_resolutions" {
+  description = "Resolved database credential secret references"
+  value       = module.provisioning.database_secret_resolutions
+}
+
+output "application_security_groups" {
+  description = "Application security groups created by platform provisioning"
+  value       = module.provisioning.application_security_groups
+}
+
+output "database_access_requests" {
+  description = "Database access requests resolved by platform provisioning"
+  value       = module.provisioning.database_access_requests
+}
+
+output "database_access_approval_required" {
+  description = "Database access requests requiring approval"
+  value       = module.provisioning.database_access_approval_required
+}
+
+output "database_access_automatic" {
+  description = "Database access requests automatically approved"
+  value       = module.provisioning.database_access_automatic
+}
+
+output "database_access_invalid" {
+  description = "Invalid database access requests"
+  value       = module.provisioning.database_access_invalid
+}
+
+output "database_workload_identities" {
+  description = "Database workload identities created by platform provisioning"
+  value       = module.provisioning.database_workload_identities
+}
+
+output "database_workload_iam_role_arns" {
+  description = "IAM roles created for database workload identities"
+  value       = module.provisioning.database_workload_iam_role_arns
+}

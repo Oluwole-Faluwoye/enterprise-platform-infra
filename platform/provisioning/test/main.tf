@@ -41,13 +41,6 @@ module "provisioning" {
   environment = "dev"
   aws_region  = "us-east-1"
 
-  database_secret_registry = {
-    customer = {
-      secret_arn      = "arn:aws:secretsmanager:us-east-1:761018849945:secret:enterprise-platform/dev/customer"
-      secret_name     = "enterprise-platform/dev/customer"
-      management_mode = "external"
-    }
-  }
 
   database_registry = {
 
@@ -76,6 +69,14 @@ module "provisioning" {
       status = "active"
 
       management_mode = "external"
+
+      credentials = {
+        provider         = "aws-secrets-manager"
+        secret_arn       = "arn:aws:secretsmanager:us-east-1:761018849945:secret:enterprise-platform/dev/customer"
+        secret_name      = "enterprise-platform/dev/customer"
+        management_mode  = "external"
+        rotation_enabled = false
+      }
 
     }
 

@@ -38,6 +38,8 @@ locals {
 
       service_name = service_name
 
+      team = service.team
+
       mode = service.persistence.mode
 
       engine = try(

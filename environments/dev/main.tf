@@ -64,7 +64,7 @@ module "eks" {
 
   vpc_id = module.networking.vpc_id
 
-  kubernetes_version = "1.33"
+  kubernetes_version = "1.34"
 
   subnet_ids = module.networking.private_subnets
 
@@ -181,8 +181,7 @@ module "provisioning" {
 
   services = var.services
 
-  database_registry        = var.database_registry
-  database_secret_registry = var.database_secret_registry
+  database_registry = var.database_registry
 
   approved_services = var.approved_services
 }

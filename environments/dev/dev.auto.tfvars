@@ -51,3 +51,18 @@ domain_name = "dreammyles.online"
 external_dns_namespace = "kube-system"
 
 external_dns_service_account = "external-dns"
+
+services = {
+  auth-service = {
+    runtime = "spring-boot"
+    team    = "identity"
+
+    persistence = {
+      enabled       = true
+      mode          = "new"
+      engine        = "postgres"
+      size          = "small"
+      database_name = "authdb"
+    }
+  }
+}

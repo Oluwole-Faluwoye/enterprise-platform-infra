@@ -143,18 +143,6 @@ variable "database_registry" {
 
 }
 
-variable "database_secret_registry" {
-  description = "Registered credential secret references for databases"
-
-  type = map(object({
-    secret_arn      = string
-    secret_name     = string
-    management_mode = string
-  }))
-
-  default = {}
-}
-
 variable "approved_services" {
   description = "Database workloads explicitly approved by the platform"
 

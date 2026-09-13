@@ -234,6 +234,9 @@ output "catalog_entry" {
     )
 
     status = "active"
-  }
 
+    owner_team = var.owner_team
+
+    credentials = local.credential_reference
+  }
 }

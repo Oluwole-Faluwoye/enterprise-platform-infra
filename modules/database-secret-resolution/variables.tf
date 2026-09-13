@@ -39,18 +39,16 @@ variable "access_decisions" {
       subnet_group_name = optional(string)
       status            = string
       management_mode   = string
+
+      credentials = optional(object({
+        provider         = string
+        secret_arn       = string
+        secret_name      = string
+        management_mode  = string
+        rotation_enabled = bool
+      }))
+
     })
-  }))
-
-  default = {}
-}
-
-variable "database_secret_registry" {
-  description = "Registered Secrets Manager references for databases"
-  type = map(object({
-    secret_arn      = string
-    secret_name     = string
-    management_mode = string
   }))
 
   default = {}

@@ -32,10 +32,19 @@ variable "registered_databases" {
 
     management_mode = string
 
+    owner_team = optional(string)
+
+    credentials = optional(object({
+      provider         = string
+      secret_arn       = string
+      secret_name      = string
+      management_mode  = string
+      rotation_enabled = bool
+    }))
+
   }))
 
   default = {}
-
 }
 
 
@@ -67,8 +76,18 @@ variable "created_databases" {
 
     status = string
 
+    owner_team = optional(string)
+
+    credentials = optional(object({
+      provider         = string
+      secret_arn       = string
+      secret_name      = string
+      management_mode  = string
+      rotation_enabled = bool
+    }))
+
   }))
 
   default = {}
-
 }
+

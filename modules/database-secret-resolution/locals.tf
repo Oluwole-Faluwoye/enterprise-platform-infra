@@ -12,19 +12,10 @@ locals {
 
       database = decision.database
 
-      secret = (
-        contains(
-          keys(var.database_secret_registry),
-          decision.database_name
-        )
-        ? var.database_secret_registry[decision.database_name]
-        : null
-      )
+      secret = decision.database.credentials
 
-      secret_exists = contains(
-        keys(var.database_secret_registry),
-        decision.database_name
-      )
+      secret_exists = decision.database.credentials != null
+
     }
   }
 

@@ -110,6 +110,8 @@ module "database" {
   # Platform-resolved application dependency
   application_name = each.key
 
+  owner_team = each.value.team
+
   application_security_group_id = (
     module.application_security_group[each.key].security_group_id
   )
@@ -170,8 +172,7 @@ module "database_secret_resolution" {
   project     = var.project
   environment = var.environment
 
-  access_decisions         = module.database_access.access_decisions
-  database_secret_registry = var.database_secret_registry
+  access_decisions = local.database_secret_access_decisions
 }
 
 # =========================================================

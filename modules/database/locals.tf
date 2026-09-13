@@ -235,4 +235,86 @@ locals {
 
   }
 
+  # =========================================================
+  # NORMALIZED CREDENTIAL REFERENCE
+  #
+  # The database implementation owns credential creation.
+  #
+  # GitOps and the platform registry consume this normalized
+  # reference without knowing whether the database is:
+  #
+  #   RDS
+  #   Aurora
+  #   DocumentDB
+  #
+  # The actual credential value is never exposed here.
+  # =========================================================
+
+  credential_reference = (
+    local.is_rds
+    ? {
+      provider = "aws-secrets-manager"
+
+      secret_arn = try(
+        aws_db_instance.this[0].master_user_secret[0].secret_arn,
+        null
+      )
+
+      secret_name = try(
+        split(
+          ":",
+          aws_db_instance.this[0].master_user_secret[0].secret_arn
+        )[6],
+        null
+      )
+
+      management_mode  = "platform"
+      rotation_enabled = true
+    }
+
+    : local.is_aurora
+    ? {
+      provider = "aws-secrets-manager"
+
+      secret_arn = try(
+        aws_rds_cluster.this[0].master_user_secret[0].secret_arn,
+        null
+      )
+
+      secret_name = try(
+        split(
+          ":",
+          aws_rds_cluster.this[0].master_user_secret[0].secret_arn
+        )[6],
+        null
+      )
+
+      management_mode  = "platform"
+      rotation_enabled = true
+    }
+
+    : local.is_documentdb
+    ? {
+      provider = "aws-secrets-manager"
+
+      secret_arn = try(
+        aws_docdb_cluster.this[0].master_user_secret[0].secret_arn,
+        null
+      )
+
+      secret_name = try(
+        split(
+          ":",
+          aws_docdb_cluster.this[0].master_user_secret[0].secret_arn
+        )[6],
+        null
+      )
+
+      management_mode  = "platform"
+      rotation_enabled = true
+    }
+
+    : null
+  )
+
 }

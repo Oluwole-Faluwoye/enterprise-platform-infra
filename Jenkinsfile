@@ -445,6 +445,21 @@ pipeline {
                             returnStdout: true
                         ).trim()
 
+                        env.DATABASE_WORKLOAD_IDENTITIES = sh(
+                            script: "terraform output -json database_workload_identities 2>/dev/null || echo '{}'",
+                            returnStdout: true
+                        ).trim()
+
+                        env.DATABASE_WORKLOAD_IAM_ROLE_ARNS = sh(
+                            script: "terraform output -json database_workload_iam_role_arns 2>/dev/null || echo '{}'",
+                            returnStdout: true
+                        ).trim()
+
+                        env.DATABASE_WORKLOAD_NAMESPACES = sh(
+                            script: "terraform output -json database_workload_namespaces 2>/dev/null || echo '{}'",
+                            returnStdout: true
+                        ).trim()
+
                     }
 
                 }
@@ -457,6 +472,9 @@ pipeline {
                 echo "Certificate ARN  : ${env.CERTIFICATE_ARN}"
                 echo "ExternalDNS Role : ${env.EXTERNAL_DNS_ROLE}"
                 echo "ALB Role         : ${env.ALB_ROLE}"
+                echo "Database Workload Identities: ${env.DATABASE_WORKLOAD_IDENTITIES}"
+                echo "Database Workload IAM Roles : ${env.DATABASE_WORKLOAD_IAM_ROLE_ARNS}"
+                echo "Database Workload Namespaces: ${env.DATABASE_WORKLOAD_NAMESPACES}"
 
             }
 
@@ -629,6 +647,29 @@ pipeline {
                         yq e -i '
                         .server.ingress.annotations."external-dns.alpha.kubernetes.io/hostname" = env(ARGOCD_HOSTNAME)
                         ' charts/argocd/values.yaml
+
+                        # -------------------------------------------------
+                        # Database workload identity
+                        # -------------------------------------------------
+
+                        AUTH_SERVICE_DB_ROLE_ARN=$(echo "$DATABASE_WORKLOAD_IAM_ROLE_ARNS" | \
+                        jq -r '."auth-service" // empty')
+
+                        if [ -n "$AUTH_SERVICE_DB_ROLE_ARN" ]; then
+                        echo "Configuring auth-service database workload identity"
+
+                        yq e -i \
+                            '.serviceAccount.create = true' \
+                            charts/auth-service/values-dev.yaml
+
+                        yq e -i \
+                            '.serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(AUTH_SERVICE_DB_ROLE_ARN)' \
+                            charts/auth-service/values-dev.yaml
+
+                        echo "auth-service database IAM role configured"
+                        else
+                        echo "No auth-service database IAM role found; skipping workload identity configuration"
+                        fi
 
                         echo "========================================"
                         echo "Updating ACM certificates across GitOps"

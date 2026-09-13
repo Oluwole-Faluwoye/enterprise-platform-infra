@@ -102,6 +102,76 @@ locals {
   }
 
 
+  # =======================================================
+  # NEW DATABASE SECRET ACCESS DECISIONS
+  # =======================================================
+  #
+  # A database created by the platform is automatically
+  # available to the workload that requested it.
+  #
+  # No database-owner approval is required because the
+  # platform created both the database and its credential
+  # secret for this workload.
+  # =======================================================
+
+  new_database_secret_decisions = {
+
+    for service_name, service in local.resolved_services :
+
+    service_name => {
+
+      service_name = service_name
+
+      database_name = service.persistence.database_name
+
+      access = service.persistence.access
+
+      team = service.team
+
+      namespace = service.namespace
+
+      mode = service.persistence.mode
+
+      action = "create"
+
+      approval_required = false
+
+      database_exists = contains(
+        keys(local.database_catalog),
+        service.persistence.database_name
+      )
+
+      database = local.database_catalog[
+        service.persistence.database_name
+      ]
+
+    }
+
+    if service.persistence.enabled
+    && service.persistence.mode == "new"
+    && contains(
+      keys(local.database_catalog),
+      service.persistence.database_name
+    )
+    && local.database_catalog[
+      service.persistence.database_name
+    ].credentials != null
+
+  }
+
+  # =======================================================
+  # CONSOLIDATED DATABASE SECRET DECISIONS
+  # =======================================================
+
+  database_secret_access_decisions = merge(
+
+    module.database_access.access_decisions,
+
+    local.new_database_secret_decisions
+
+  )
+
+
   # =========================================================
   # AUTHORITATIVE DATABASE CATALOG
   # =========================================================

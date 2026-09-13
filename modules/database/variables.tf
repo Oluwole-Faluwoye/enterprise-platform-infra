@@ -114,6 +114,24 @@ variable "application_security_group_id" {
   }
 }
 
+variable "owner_team" {
+
+  description = "Platform ownership team for the database"
+
+  type = string
+
+  validation {
+    condition = can(
+      regex(
+        "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+        var.owner_team
+      )
+    )
+
+    error_message = "owner_team must contain only lowercase letters, numbers, and hyphens."
+  }
+}
+
 # =========================================================
 # OPTIONAL PLATFORM OVERRIDE
 # =========================================================

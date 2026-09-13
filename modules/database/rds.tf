@@ -70,7 +70,7 @@ resource "aws_db_instance" "this" {
 
   auto_minor_version_upgrade = true
 
-  skip_final_snapshot = false
+  skip_final_snapshot = true
 
   final_snapshot_identifier = "${local.database_identifier}-final"
 

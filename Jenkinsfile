@@ -138,9 +138,17 @@ pipeline {
                 dir("environments/${TF_ENV}") {
 
                     sh '''
+                        echo "=== Terraform environment ==="
+                        terraform version
+                        echo "=== Disk ==="
+                        df -h
+                        echo "=== TMP ==="
+                        ls -ld /tmp
+                        echo "=== Terraform cache ==="
+                        ls -la "$HOME/.terraform.d" || true
 
-                    terraform init
-
+                        echo "=== Terraform Init ==="
+                        terraform init -input=false
                     '''
                 }
             }

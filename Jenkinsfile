@@ -271,9 +271,14 @@ pipeline {
 
                                 echo "Importing into Terraform state..."
 
-                                if terraform import \
-                                    "$TF_ADDRESS" \
-                                    "$SECRET_NAME"
+                                if SECRET_ARN=$(aws secretsmanager describe-secret \
+                                     --secret-id "$SECRET_NAME" \
+                                     --query ARN \
+                                     --output text)
+
+                                    echo "Secret ARN: $SECRET_ARN"
+
+                                    terraform import "$TF_ADDRESS" "$SECRET_ARN"
                                 then
 
                                     echo "✓ Import successful."

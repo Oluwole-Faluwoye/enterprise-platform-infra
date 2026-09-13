@@ -86,6 +86,8 @@ module "eks" {
 
       name = "devops-nodes"
 
+      kubernetes_version = var.kubernetes_version
+
       desired_size = 3
       max_size     = 3
       min_size     = 2

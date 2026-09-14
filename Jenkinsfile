@@ -701,17 +701,10 @@ pipeline {
                         # Auth-service database contract
                         # -------------------------------------------------
 
-                        AUTH_DB_HOST=$(echo "$DATABASE_CATALOG" | \
-                        jq -r '.authdb.endpoint // empty')
-
-                        AUTH_DB_PORT=$(echo "$DATABASE_CATALOG" | \
-                        jq -r '.authdb.port // empty')
-
-                        AUTH_DB_NAME=$(echo "$DATABASE_CATALOG" | \
-                        jq -r '.authdb.logical_name // empty')
-
-                        AUTH_DB_CREDENTIAL_REFERENCE=$(echo "$DATABASE_CATALOG" | \
-                        jq -r '.authdb.credentials.secret_arn // empty')
+                        export AUTH_DB_HOST=$(echo "$DATABASE_CATALOG" | jq -r '.authdb.endpoint // empty')
+                        export AUTH_DB_PORT=$(echo "$DATABASE_CATALOG" | jq -r '.authdb.port // empty')
+                        export AUTH_DB_NAME=$(echo "$DATABASE_CATALOG" | jq -r '.authdb.logical_name // empty')
+                        export AUTH_DB_CREDENTIAL_REFERENCE=$(echo "$DATABASE_CATALOG" | jq -r '.authdb.credentials.secret_arn // empty')
 
                         if [ -n "$AUTH_DB_HOST" ] && \
                            [ -n "$AUTH_DB_PORT" ] && \

@@ -25,6 +25,8 @@ pipeline {
 
         ARGOCD_CHART_VERSION = "10.2.0"
 
+        TMPDIR = '/var/jenkins_home/terraform-tmp'
+
         K8S_API_CIDRS = '''[
       "174.2.8.121/32",
       "70.64.74.185/32",
@@ -132,18 +134,23 @@ pipeline {
         }
 
         stage('Terraform Init') {
-
             steps {
-
                 dir("environments/${TF_ENV}") {
-
                     sh '''
                         echo "=== Terraform environment ==="
                         terraform version
+
                         echo "=== Disk ==="
                         df -h
-                        echo "=== TMP ==="
-                        ls -ld /tmp
+
+                        echo "=== Terraform temp directory ==="
+                        export TMPDIR="$HOME/terraform-tmp"
+                        mkdir -p "$TMPDIR"
+                        chmod 700 "$TMPDIR"
+
+                        echo "TMPDIR=$TMPDIR"
+                        ls -ld "$TMPDIR"
+
                         echo "=== Terraform cache ==="
                         ls -la "$HOME/.terraform.d" || true
 
@@ -153,6 +160,7 @@ pipeline {
                 }
             }
         }
+    
 
         stage('Terraform Validate') {
 

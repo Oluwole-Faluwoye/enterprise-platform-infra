@@ -1,9 +1,9 @@
 resource "aws_acm_certificate" "platform" {
 
-  domain_name = "*.dev.${var.domain_name}"
+  domain_name = "*.${var.domain_name}"
 
   subject_alternative_names = [
-    "dev.${var.domain_name}"
+    var.domain_name
   ]
 
   validation_method = "DNS"
@@ -21,8 +21,8 @@ resource "aws_acm_certificate" "platform" {
 
 locals {
   certificate_domains = [
-    "*.dev.${var.domain_name}",
-    "dev.${var.domain_name}"
+    "*.${var.domain_name}",
+    var.domain_name
   ]
 }
 

@@ -97,3 +97,42 @@ module "database_registry_store" {
   table_name = "enterprise-platform-database-registry"
 
 }
+
+# =========================================================
+# Route 53 Root Route 53 ( This creates dreammyles.online)
+# =========================================================
+module "route53_root" {
+  source = "../../modules/route53"
+
+  project     = "enterprise-platform"
+  environment = "bootstrap"
+
+  domain_name = var.domain_name
+}
+
+# =================================================================
+# Route 53 child Route 53 ( This creates dev.dreammyles.online)
+# =================================================================
+
+module "route53_dev" {
+  source = "../../modules/route53"
+
+  project     = "enterprise-platform"
+  environment = "dev-dns"
+
+  domain_name = var.dev_domain_name
+}
+
+
+# =============================================================================
+# NS delegation : After the child zone exists, Route53 gives it name servers.
+# =============================================================================
+
+resource "aws_route53_record" "dev_delegation" {
+  zone_id = module.route53_root.hosted_zone_id
+  name    = var.dev_domain_name
+  type    = "NS"
+  ttl     = 300
+
+  records = module.route53_dev.hosted_zone_name_servers
+}

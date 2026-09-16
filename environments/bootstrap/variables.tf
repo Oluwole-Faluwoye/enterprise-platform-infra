@@ -85,3 +85,13 @@ variable "admin_user_arn" {
 
   type = string
 }
+
+variable "domain_name" {
+  description = "Root domain managed by the platform"
+  type        = string
+}
+
+variable "dev_domain_name" {
+  description = "Delegated DEV environment domain"
+  type        = string
+}

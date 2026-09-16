@@ -33,3 +33,7 @@ variable "terraform_role_arn" {
   default     = null
 }
 
+variable "cluster_name" {
+  description = "EKS cluster name"
+  type        = string
+}

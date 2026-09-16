@@ -75,3 +75,23 @@ output "database_registry_table_arn" {
   value = module.database_registry_store.table_arn
 
 }
+
+output "root_hosted_zone_id" {
+  description = "Route53 hosted zone ID for the root domain"
+  value       = module.route53_root.hosted_zone_id
+}
+
+output "root_name_servers" {
+  description = "Route53 name servers for the root domain"
+  value       = module.route53_root.hosted_zone_name_servers
+}
+
+output "dev_hosted_zone_id" {
+  description = "Route53 hosted zone ID for the DEV delegated domain"
+  value       = module.route53_dev.hosted_zone_id
+}
+
+output "dev_name_servers" {
+  description = "Route53 name servers for the DEV delegated domain"
+  value       = module.route53_dev.hosted_zone_name_servers
+}

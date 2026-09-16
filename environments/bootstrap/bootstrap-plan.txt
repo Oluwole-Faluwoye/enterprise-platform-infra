@@ -1,0 +1,134 @@
+[0m[1mmodule.jenkins[0].data.aws_ami.amazon_linux: Reading...[0m[0m
+[0m[1mmodule.jenkins[0].data.aws_caller_identity.current: Reading...[0m[0m
+[0m[1mmodule.jenkins_ecr[0].aws_ecr_repository.repo: Refreshing state... [id=jenkins][0m
+[0m[1mmodule.app_ecr[0].aws_ecr_repository.repo: Refreshing state... [id=auth-service][0m
+[0m[1mmodule.jenkins[0].aws_iam_role.jenkins_role: Refreshing state... [id=jenkins-ec2-role][0m
+[0m[1mmodule.jenkins[0].data.aws_region.current: Reading...[0m[0m
+[0m[1mmodule.jenkins[0].aws_cloudwatch_log_group.jenkins: Refreshing state... [id=/platform/jenkins][0m
+[0m[1mmodule.database_registry_store.aws_dynamodb_table.this: Refreshing state... [id=enterprise-platform-database-registry][0m
+[0m[1mmodule.jenkins[0].data.aws_region.current: Read complete after 0s [id=us-east-1][0m
+[0m[1mmodule.vpc.module.vpc.aws_vpc.this[0]: Refreshing state... [id=vpc-0e9d0a0cfe7a6787c][0m
+[0m[1mmodule.jenkins[0].data.aws_caller_identity.current: Read complete after 0s [id=761018849945][0m
+[0m[1mmodule.app_ecr[0].aws_ecr_lifecycle_policy.policy: Refreshing state... [id=auth-service][0m
+[0m[1mmodule.jenkins_ecr[0].aws_ecr_lifecycle_policy.policy: Refreshing state... [id=jenkins][0m
+[0m[1mmodule.jenkins[0].aws_iam_role_policy_attachment.ssm: Refreshing state... [id=jenkins-ec2-role-20260625170840893800000002][0m
+[0m[1mmodule.iam_bootstrap[0].aws_iam_role.terraform_deployer: Refreshing state... [id=enterprise-platform-terraform-role][0m
+[0m[1mmodule.jenkins[0].aws_iam_role_policy.jenkins_secrets_manager: Refreshing state... [id=jenkins-ec2-role:jenkins-secrets-manager][0m
+[0m[1mmodule.jenkins[0].aws_iam_instance_profile.jenkins_profile: Refreshing state... [id=terraform-20260625170840759000000001][0m
+[0m[1mmodule.jenkins[0].aws_iam_role_policy.jenkins_inline_policy: Refreshing state... [id=jenkins-ec2-role:jenkins-devops-policy][0m
+[0m[1mmodule.jenkins[0].aws_iam_role_policy_attachment.admin_access: Refreshing state... [id=jenkins-ec2-role-20260625170841021000000003][0m
+[0m[1mmodule.jenkins[0].data.aws_ami.amazon_linux: Read complete after 1s [id=ami-07b7daedc902f9f57][0m
+[0m[1mmodule.vpc.module.vpc.aws_default_route_table.default[0]: Refreshing state... [id=rtb-080735e47b394daeb][0m
+[0m[1mmodule.vpc.module.vpc.aws_default_security_group.this[0]: Refreshing state... [id=sg-007f185bce6d3dbc1][0m
+[0m[1mmodule.vpc.module.vpc.aws_internet_gateway.this[0]: Refreshing state... [id=igw-0458f071f1a6a6082][0m
+[0m[1mmodule.vpc.aws_subnet.database[0]: Refreshing state... [id=subnet-0cbfc85edb28b9f49][0m
+[0m[1mmodule.vpc.aws_subnet.database[1]: Refreshing state... [id=subnet-0992a2fe4a75cb128][0m
+[0m[1mmodule.jenkins[0].aws_security_group.jenkins_sg: Refreshing state... [id=sg-06ddddebfdf734eec][0m
+[0m[1mmodule.vpc.aws_route_table.database: Refreshing state... [id=rtb-048f5f3e1a9d5227f][0m
+[0m[1mmodule.vpc.module.vpc.aws_default_network_acl.this[0]: Refreshing state... [id=acl-0768d75f1cff77467][0m
+[0m[1mmodule.vpc.module.vpc.aws_route_table.public[0]: Refreshing state... [id=rtb-056230ee3a349358c][0m
+[0m[1mmodule.vpc.module.vpc.aws_subnet.private[0]: Refreshing state... [id=subnet-04d7e1366bcd04d98][0m
+[0m[1mmodule.vpc.module.vpc.aws_subnet.private[1]: Refreshing state... [id=subnet-0245204b2ad0355d8][0m
+[0m[1mmodule.vpc.module.vpc.aws_route_table.private[0]: Refreshing state... [id=rtb-03debffbbfac20d5a][0m
+[0m[1mmodule.vpc.module.vpc.aws_subnet.public[0]: Refreshing state... [id=subnet-052a796e62007c11d][0m
+[0m[1mmodule.iam_bootstrap[0].aws_iam_role_policy_attachment.administrator_access: Refreshing state... [id=enterprise-platform-terraform-role-20260718203943373300000001][0m
+[0m[1mmodule.vpc.module.vpc.aws_subnet.public[1]: Refreshing state... [id=subnet-0b5eda04197d5986a][0m
+[0m[1mmodule.vpc.aws_route_table_association.database[0]: Refreshing state... [id=rtbassoc-09a5319b15e978092][0m
+[0m[1mmodule.vpc.aws_route_table_association.database[1]: Refreshing state... [id=rtbassoc-020980fc0d9c9a39d][0m
+[0m[1mmodule.vpc.module.vpc.aws_route.public_internet_gateway[0]: Refreshing state... [id=r-rtb-056230ee3a349358c1080289494][0m
+[0m[1mmodule.vpc.module.vpc.aws_route_table_association.private[0]: Refreshing state... [id=rtbassoc-027e0bdb6c04c1bed][0m
+[0m[1mmodule.vpc.module.vpc.aws_route_table_association.private[1]: Refreshing state... [id=rtbassoc-0cb2673cbfa79f13d][0m
+[0m[1mmodule.vpc.module.vpc.aws_route_table_association.public[1]: Refreshing state... [id=rtbassoc-000b81f780e07dacf][0m
+[0m[1mmodule.vpc.module.vpc.aws_route_table_association.public[0]: Refreshing state... [id=rtbassoc-0d6da59aa39c5c494][0m
+[0m[1mmodule.jenkins[0].data.aws_subnet.jenkins: Reading...[0m[0m
+[0m[1mmodule.jenkins[0].aws_instance.jenkins: Refreshing state... [id=i-06d6ae8514c5a4cbc][0m
+[0m[1mmodule.jenkins[0].data.aws_subnet.jenkins: Read complete after 0s [id=subnet-052a796e62007c11d][0m
+[0m[1mmodule.jenkins[0].aws_ebs_volume.jenkins_data: Refreshing state... [id=vol-02c8380159074c082][0m
+[0m[1mmodule.jenkins[0].aws_volume_attachment.jenkins_attach: Refreshing state... [id=vai-2083185380][0m
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  [32m+[0m create[0m
+
+Terraform will perform the following actions:
+
+[1m  # aws_route53_record.dev_delegation[0m will be created
+[0m  [32m+[0m[0m resource "aws_route53_record" "dev_delegation" {
+      [32m+[0m[0m allow_overwrite = (known after apply)
+      [32m+[0m[0m fqdn            = (known after apply)
+      [32m+[0m[0m id              = (known after apply)
+      [32m+[0m[0m name            = "dev.dreammyles.online"
+      [32m+[0m[0m records         = (known after apply)
+      [32m+[0m[0m ttl             = 300
+      [32m+[0m[0m type            = "NS"
+      [32m+[0m[0m zone_id         = (known after apply)
+    }
+
+[1m  # module.route53_dev.aws_route53_zone.this[0m will be created
+[0m  [32m+[0m[0m resource "aws_route53_zone" "this" {
+      [32m+[0m[0m arn                         = (known after apply)
+      [32m+[0m[0m comment                     = "Managed by Terraform"
+      [32m+[0m[0m enable_accelerated_recovery = (known after apply)
+      [32m+[0m[0m force_destroy               = false
+      [32m+[0m[0m id                          = (known after apply)
+      [32m+[0m[0m name                        = "dev.dreammyles.online"
+      [32m+[0m[0m name_servers                = (known after apply)
+      [32m+[0m[0m primary_name_server         = (known after apply)
+      [32m+[0m[0m tags                        = {
+          [32m+[0m[0m "Environment" = "dev-dns"
+          [32m+[0m[0m "Project"     = "enterprise-platform"
+          [32m+[0m[0m "Terraform"   = "true"
+        }
+      [32m+[0m[0m tags_all                    = {
+          [32m+[0m[0m "Environment" = "dev-dns"
+          [32m+[0m[0m "Project"     = "enterprise-platform"
+          [32m+[0m[0m "Terraform"   = "true"
+        }
+      [32m+[0m[0m zone_id                     = (known after apply)
+    }
+
+[1m  # module.route53_root.aws_route53_zone.this[0m will be created
+[0m  [32m+[0m[0m resource "aws_route53_zone" "this" {
+      [32m+[0m[0m arn                         = (known after apply)
+      [32m+[0m[0m comment                     = "Managed by Terraform"
+      [32m+[0m[0m enable_accelerated_recovery = (known after apply)
+      [32m+[0m[0m force_destroy               = false
+      [32m+[0m[0m id                          = (known after apply)
+      [32m+[0m[0m name                        = "dreammyles.online"
+      [32m+[0m[0m name_servers                = (known after apply)
+      [32m+[0m[0m primary_name_server         = (known after apply)
+      [32m+[0m[0m tags                        = {
+          [32m+[0m[0m "Environment" = "bootstrap"
+          [32m+[0m[0m "Project"     = "enterprise-platform"
+          [32m+[0m[0m "Terraform"   = "true"
+        }
+      [32m+[0m[0m tags_all                    = {
+          [32m+[0m[0m "Environment" = "bootstrap"
+          [32m+[0m[0m "Project"     = "enterprise-platform"
+          [32m+[0m[0m "Terraform"   = "true"
+        }
+      [32m+[0m[0m zone_id                     = (known after apply)
+    }
+
+[1mPlan:[0m 3 to add, 0 to change, 0 to destroy.
+[0m
+Changes to Outputs:
+  [32m+[0m[0m dev_hosted_zone_id           = (known after apply)
+  [32m+[0m[0m dev_name_servers             = (known after apply)
+  [32m+[0m[0m root_hosted_zone_id          = (known after apply)
+  [32m+[0m[0m root_name_servers            = (known after apply)
+[33m╷[0m[0m
+[33m│[0m [0m[1m[33mWarning: [0m[0m[1mDeprecated attribute[0m
+[33m│[0m [0m
+[33m│[0m [0m[0m  on .terraform\modules\vpc.vpc\vpc-flow-logs.tf line 28, in locals:
+[33m│[0m [0m  28:     "arn:${data.aws_partition.current[0].partition}:logs:${data.aws_region.current[0][4m.name[0m}:${data.aws_caller_identity.current[0].account_id}:log-group:${log_group.name}:*"[0m
+[33m│[0m [0m
+[33m│[0m [0mThe attribute "name" is deprecated. Refer to the provider documentation for details.
+[33m│[0m [0m
+[33m│[0m [0m(and one more similar warning elsewhere)
+[33m╵[0m[0m
+[90m
+─────────────────────────────────────────────────────────────────────────────[0m
+
+Note: You didn't use the -out option to save this plan, so Terraform can't
+guarantee to take exactly these actions if you run "terraform apply" now.

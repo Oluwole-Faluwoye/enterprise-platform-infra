@@ -19,10 +19,23 @@ module "eks" {
 
   enable_cluster_creator_admin_permissions = false
 
+  iam_role_additional_policies = {
+    AmazonEKSVPCResourceController = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
+  }
+
+
   addons = {
+
     vpc-cni = {
       most_recent    = true
       before_compute = true
+
+      configuration_values = jsonencode({
+        env = {
+          ENABLE_POD_ENI                    = "true"
+          POD_SECURITY_GROUP_ENFORCING_MODE = "standard"
+        }
+      })
     }
 
     coredns = {
@@ -92,7 +105,7 @@ module "eks" {
       max_size     = 3
       min_size     = 2
 
-      instance_types = ["t3.medium"]
+      instance_types = ["m5.large"]
 
       capacity_type = "ON_DEMAND"
     }

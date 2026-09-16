@@ -57,11 +57,13 @@ output "secret_arns" {
 # =========================================================
 
 output "hosted_zone_id" {
-  value = module.route53.hosted_zone_id
+  description = "Bootstrap-owned DEV Route53 hosted zone"
+  value       = data.terraform_remote_state.bootstrap.outputs.dev_hosted_zone_id
 }
 
 output "hosted_zone_name_servers" {
-  value = module.route53.hosted_zone_name_servers
+  description = "Bootstrap-owned DEV Route53 name servers"
+  value       = data.terraform_remote_state.bootstrap.outputs.dev_name_servers
 }
 
 # =========================================================

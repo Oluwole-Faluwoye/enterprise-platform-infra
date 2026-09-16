@@ -117,24 +117,10 @@ module "iam_irsa" {
 
   secret_arns = module.secrets_manager.secret_arns
 
-  hosted_zone_id = module.route53.hosted_zone_id
+  hosted_zone_id = data.terraform_remote_state.bootstrap.outputs.dev_hosted_zone_id
 
-  external_dns_namespace = var.external_dns_namespace
-
+  external_dns_namespace       = var.external_dns_namespace
   external_dns_service_account = var.external_dns_service_account
-}
-
-# =========================================================
-# ROUTE53
-# =========================================================
-
-module "route53" {
-  source = "../../modules/route53"
-
-  project     = var.project_name
-  environment = var.environment
-
-  domain_name = var.domain_name
 }
 
 # =========================================================
@@ -149,7 +135,7 @@ module "acm" {
 
   domain_name = var.domain_name
 
-  hosted_zone_id = module.route53.hosted_zone_id
+  hosted_zone_id = data.terraform_remote_state.bootstrap.outputs.dev_hosted_zone_id
 }
 
 # =========================================================

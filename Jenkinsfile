@@ -446,6 +446,12 @@ pipeline {
                             returnStdout: true
                         ).trim()
 
+                        env.VPC_ID = sh(
+                            script: "terraform output -raw vpc_id",
+                            returnStdout: true
+                        ).trim()
+
+
                         env.EXTERNAL_DNS_ROLE = sh(
                             script: "terraform output -raw external_dns_role_arn",
                             returnStdout: true
@@ -494,6 +500,7 @@ pipeline {
                 echo "Terraform Outputs"
                 echo "========================================"
                 echo "Cluster Name     : ${env.CLUSTER_NAME}"
+                echo "VPC ID           : ${env.VPC_ID}"
                 echo "Hosted Zone ID   : ${env.HOSTED_ZONE_ID}"
                 echo "Certificate ARN  : ${env.CERTIFICATE_ARN}"
                 echo "ExternalDNS Role : ${env.EXTERNAL_DNS_ROLE}"
@@ -501,7 +508,6 @@ pipeline {
                 echo "Database Workload Identities: ${env.DATABASE_WORKLOAD_IDENTITIES}"
                 echo "Database Workload IAM Roles : ${env.DATABASE_WORKLOAD_IAM_ROLE_ARNS}"
                 echo "Database Workload Namespaces: ${env.DATABASE_WORKLOAD_NAMESPACES}"
-
             }
 
         }
@@ -646,10 +652,10 @@ pipeline {
                         .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(EXTERNAL_DNS_ROLE)
                         ' charts/external-dns/values.yaml
 
-                        echo "Updating AWS Load Balancer Controller IAM Role..."
-
+                        echo "Updating AWS Load Balancer Controller configuration..."
                         yq e -i '
-                        .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(ALB_ROLE)
+                          .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(ALB_ROLE) |
+                          .vpcId = env(VPC_ID)
                         ' charts/aws-load-balancer-controller/values.yaml
 
                         echo "Updating Networking ACM Certificate..."

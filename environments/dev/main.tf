@@ -154,6 +154,7 @@ module "provisioning" {
 
   environment_context = {
     vpc_id              = module.networking.vpc_id
+    vpc_cidr            = var.vpc_cidr
     private_subnet_ids  = module.networking.private_subnets
     database_subnet_ids = module.networking.database_subnets
 

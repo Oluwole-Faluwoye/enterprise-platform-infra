@@ -52,6 +52,7 @@ variable "environment_context" {
   type = object({
     enable_eks                = bool
     vpc_id                    = string
+    vpc_cidr = string
     private_subnet_ids        = list(string)
     database_subnet_ids       = list(string)
     cluster_name              = optional(string)

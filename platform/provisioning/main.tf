@@ -69,6 +69,8 @@ module "application_security_group" {
 
   vpc_id = var.environment_context.vpc_id
 
+  vpc_cidr = var.environment_context.vpc_cidr
+
 }
 
 # =========================================================
@@ -115,6 +117,22 @@ module "database" {
   application_security_group_id = (
     module.application_security_group[each.key].security_group_id
   )
+}
+
+resource "aws_vpc_security_group_egress_rule" "application_to_database" {
+
+  for_each = local.database_creation_requests
+
+  security_group_id = module.application_security_group[each.key].security_group_id
+
+  description = "Allow ${each.key} to access its platform-managed database"
+
+  ip_protocol = "tcp"
+
+  from_port = module.database[each.key].database_port
+  to_port   = module.database[each.key].database_port
+
+  referenced_security_group_id = module.database[each.key].security_group_id
 }
 
 # =========================================================

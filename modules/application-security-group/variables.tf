@@ -28,8 +28,14 @@ variable "vpc_id" {
   type        = string
 }
 
+variable "vpc_cidr" {
+  description = "CIDR block of the VPC where the application runs"
+  type        = string
+}
+
 variable "tags" {
   description = "Additional resource tags"
   type        = map(string)
   default     = {}
 }
+

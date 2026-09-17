@@ -451,6 +451,10 @@ pipeline {
                             returnStdout: true
                         ).trim()
 
+                        env.APPLICATION_SECURITY_GROUPS = sh(
+                            script: "terraform output -json application_security_groups",
+                            returnStdout: true
+                        ).trim()
 
                         env.EXTERNAL_DNS_ROLE = sh(
                             script: "terraform output -raw external_dns_role_arn",
@@ -501,6 +505,7 @@ pipeline {
                 echo "========================================"
                 echo "Cluster Name     : ${env.CLUSTER_NAME}"
                 echo "VPC ID           : ${env.VPC_ID}"
+                echo "Application Security Groups: ${env.APPLICATION_SECURITY_GROUPS}"
                 echo "Hosted Zone ID   : ${env.HOSTED_ZONE_ID}"
                 echo "Certificate ARN  : ${env.CERTIFICATE_ARN}"
                 echo "ExternalDNS Role : ${env.EXTERNAL_DNS_ROLE}"
@@ -652,6 +657,26 @@ pipeline {
                         .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(EXTERNAL_DNS_ROLE)
                         ' charts/external-dns/values.yaml
 
+                        echo "Resolving auth-service application security group..."
+
+                        if [ -z "$APPLICATION_SECURITY_GROUPS" ] || [ "$APPLICATION_SECURITY_GROUPS" = "{}" ]; then
+                            echo "ERROR: APPLICATION_SECURITY_GROUPS is empty."
+                            echo "Terraform did not provide the application security group output."
+                            exit 1
+                        fi
+
+                        echo "Terraform Application Security Groups: $APPLICATION_SECURITY_GROUPS"
+
+                        export AUTH_SERVICE_APPLICATION_SG=$(echo "$APPLICATION_SECURITY_GROUPS" | jq -r '."auth-service".id // empty')
+
+                        if [ -z "$AUTH_SERVICE_APPLICATION_SG" ]; then
+                            echo "ERROR: auth-service application security group could not be resolved."
+                            echo "APPLICATION_SECURITY_GROUPS: $APPLICATION_SECURITY_GROUPS"
+                            exit 1
+                        fi
+
+                        echo "Auth Service Application Security Group: $AUTH_SERVICE_APPLICATION_SG"
+
                         echo "Updating AWS Load Balancer Controller configuration..."
                         yq e -i '
                           .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(ALB_ROLE) |
@@ -679,6 +704,20 @@ pipeline {
                         yq e -i '
                         .server.ingress.annotations."external-dns.alpha.kubernetes.io/hostname" = env(ARGOCD_HOSTNAME)
                         ' charts/argocd/values.yaml
+
+                        if [ -n "$AUTH_SERVICE_APPLICATION_SG" ]; then
+                            echo "Configuring SecurityGroupPolicy for auth-service..."
+
+                            yq e -i \
+                                '.securityGroupPolicy.enabled = true |
+                                .securityGroupPolicy.groupId = env(AUTH_SERVICE_APPLICATION_SG)' \
+                                charts/auth-service/values-dev.yaml
+
+                            echo "SecurityGroupPolicy configured for auth-service."
+
+                            echo "Resulting configuration:"
+                            yq e '.securityGroupPolicy' charts/auth-service/values-dev.yaml
+                        fi
 
                         # -------------------------------------------------
                         # Database workload identity

@@ -172,3 +172,44 @@ module "provisioning" {
 
   approved_services = var.approved_services
 }
+
+# =========================================================
+# EKS NODE SECURITY GROUP - POD DNS ACCESS
+# =========================================================
+#
+# Pods using Security Groups for Pods receive their own
+# application security group. CoreDNS runs on the EKS
+# worker nodes, so the node security group must allow
+# DNS traffic from application pod security groups.
+#
+# Application SG -> Node SG
+# TCP/53 and UDP/53
+#
+# This is intentionally scoped to the application SG.
+# =========================================================
+
+resource "aws_vpc_security_group_ingress_rule" "node_from_application_dns_tcp" {
+  for_each = var.enable_eks ? module.provisioning.application_security_groups : {}
+
+  security_group_id            = module.eks[0].node_group_security_group_id
+  referenced_security_group_id = each.value.id
+
+  ip_protocol = "tcp"
+  from_port   = 53
+  to_port     = 53
+
+  description = "Allow ${each.key} application pods to access CoreDNS over TCP"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "node_from_application_dns_udp" {
+  for_each = var.enable_eks ? module.provisioning.application_security_groups : {}
+
+  security_group_id            = module.eks[0].node_group_security_group_id
+  referenced_security_group_id = each.value.id
+
+  ip_protocol = "udp"
+  from_port   = 53
+  to_port     = 53
+
+  description = "Allow ${each.key} application pods to access CoreDNS over UDP"
+}

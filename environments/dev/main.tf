@@ -190,7 +190,7 @@ module "provisioning" {
 
   approved_services = var.approved_services
 
-    artifact_bucket_arns = [
+  artifact_bucket_arns = [
     module.artifacts.bucket_arn
   ]
 }

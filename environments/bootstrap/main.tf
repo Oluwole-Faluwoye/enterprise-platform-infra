@@ -56,6 +56,8 @@ module "jenkins" {
   vpc_id         = module.vpc.vpc_id
 
   allowed_jenkins_ssh_cidrs = var.allowed_jenkins_ssh_cidrs
+
+  artifact_bucket_arns = var.artifact_bucket_arns
 }
 
 

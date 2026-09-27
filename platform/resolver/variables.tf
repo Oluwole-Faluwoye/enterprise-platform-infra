@@ -132,6 +132,11 @@ variable "services" {
 
     })
 
+    migration = optional(object({
+      enabled = bool
+      engine  = string
+    }))
+
   }))
 
   # =======================================================

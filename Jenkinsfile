@@ -496,6 +496,11 @@ pipeline {
                             returnStdout: true
                         ).trim()
 
+                        env.GITOPS_SERVICE_CONTRACT = sh(
+                            script: "terraform output -json gitops_service_contract",
+                            returnStdout: true
+                        ).trim()
+
                     }
 
                 }
@@ -513,8 +518,80 @@ pipeline {
                 echo "Database Workload Identities: ${env.DATABASE_WORKLOAD_IDENTITIES}"
                 echo "Database Workload IAM Roles : ${env.DATABASE_WORKLOAD_IAM_ROLE_ARNS}"
                 echo "Database Workload Namespaces: ${env.DATABASE_WORKLOAD_NAMESPACES}"
+                echo "GitOps Service Contract:"
+                echo "${env.GITOPS_SERVICE_CONTRACT}"
             }
 
+        }
+
+        stage('Publish GitOps Service Contract') {
+
+            when {
+                expression {
+                    return params.APPLY_CHANGES
+                }
+            }
+
+            steps {
+
+                dir("environments/${TF_ENV}") {
+
+                    sh '''
+                        set -euo pipefail
+
+                        CONTRACT_FILE="gitops-service-contract.json"
+                        CONTRACT_KEY="platform-contract/${TF_ENV}/gitops-service-contract.json"
+
+                        echo "========================================"
+                        echo "Publishing GitOps Service Contract"
+                        echo "========================================"
+
+                        terraform output -json gitops_service_contract > "${CONTRACT_FILE}"
+
+                        echo "Validating contract..."
+
+                        jq empty "${CONTRACT_FILE}"
+
+                        jq -e '."auth-service"' "${CONTRACT_FILE}" >/dev/null
+
+                        echo "Contract validation summary:"
+                        jq 'to_entries[] | {
+                          service: .key,
+                          namespace: .value.namespace,
+                          runtime: .value.runtime,
+                          database_enabled: .value.database.enabled,
+                          database_engine: .value.database.engine,
+                          migration_enabled: .value.migration.enabled,
+                          migration_engine: .value.migration.engine
+                        }' "${CONTRACT_FILE}"
+
+                        ARTIFACT_BUCKET=$(terraform output -raw artifact_bucket_name)
+
+                        if [ -z "${ARTIFACT_BUCKET}" ]; then
+                            echo "ERROR: artifact bucket could not be resolved."
+                            exit 1
+                        fi
+
+                        echo "Artifact bucket: ${ARTIFACT_BUCKET}"
+                        echo "Contract key: ${CONTRACT_KEY}"
+
+                        aws s3 cp \
+                            "${CONTRACT_FILE}" \
+                            "s3://${ARTIFACT_BUCKET}/${CONTRACT_KEY}" \
+                            --content-type application/json
+
+                        echo "Verifying uploaded contract..."
+
+                        aws s3 cp \
+                            "s3://${ARTIFACT_BUCKET}/${CONTRACT_KEY}" \
+                            - \
+                            | jq empty
+
+                        echo "GitOps service contract published successfully."
+                        echo "s3://${ARTIFACT_BUCKET}/${CONTRACT_KEY}"
+                    '''
+                }
+            }
         }
     
         
@@ -656,141 +733,6 @@ pipeline {
                         yq e -i '
                         .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(EXTERNAL_DNS_ROLE)
                         ' charts/external-dns/values.yaml
-
-                        echo "Resolving auth-service application security group..."
-
-                        if [ -z "$APPLICATION_SECURITY_GROUPS" ] || [ "$APPLICATION_SECURITY_GROUPS" = "{}" ]; then
-                            echo "ERROR: APPLICATION_SECURITY_GROUPS is empty."
-                            echo "Terraform did not provide the application security group output."
-                            exit 1
-                        fi
-
-                        echo "Terraform Application Security Groups: $APPLICATION_SECURITY_GROUPS"
-
-                        export AUTH_SERVICE_APPLICATION_SG=$(echo "$APPLICATION_SECURITY_GROUPS" | jq -r '."auth-service".id // empty')
-
-                        if [ -z "$AUTH_SERVICE_APPLICATION_SG" ]; then
-                            echo "ERROR: auth-service application security group could not be resolved."
-                            echo "APPLICATION_SECURITY_GROUPS: $APPLICATION_SECURITY_GROUPS"
-                            exit 1
-                        fi
-
-                        echo "Auth Service Application Security Group: $AUTH_SERVICE_APPLICATION_SG"
-
-                        echo "Updating AWS Load Balancer Controller configuration..."
-                        yq e -i '
-                          .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(ALB_ROLE) |
-                          .vpcId = env(VPC_ID)
-                        ' charts/aws-load-balancer-controller/values.yaml
-
-                        echo "Updating Networking ACM Certificate..."
-
-                        yq e -i '
-                        .alb.certificateArn = env(CERTIFICATE_ARN)
-                        ' charts/networking/values.yaml
-
-                        echo "Updating ArgoCD ACM Certificate..."
-
-                        yq e -i '
-                        .server.ingress.annotations."alb.ingress.kubernetes.io/certificate-arn" = env(CERTIFICATE_ARN)
-                        ' charts/argocd/values.yaml
-
-                        echo "Updating ArgoCD Hostname..."
-
-                        yq e -i '
-                        .server.ingress.hostname = env(ARGOCD_HOSTNAME)
-                        ' charts/argocd/values.yaml
-
-                        yq e -i '
-                        .server.ingress.annotations."external-dns.alpha.kubernetes.io/hostname" = env(ARGOCD_HOSTNAME)
-                        ' charts/argocd/values.yaml
-
-                        if [ -n "$AUTH_SERVICE_APPLICATION_SG" ]; then
-                            echo "Configuring SecurityGroupPolicy for auth-service..."
-
-                            yq e -i \
-                                '.securityGroupPolicy.enabled = true |
-                                .securityGroupPolicy.groupId = env(AUTH_SERVICE_APPLICATION_SG)' \
-                                charts/auth-service/values-dev.yaml
-
-                            echo "SecurityGroupPolicy configured for auth-service."
-
-                            echo "Resulting configuration:"
-                            yq e '.securityGroupPolicy' charts/auth-service/values-dev.yaml
-                        fi
-
-                        # -------------------------------------------------
-                        # Database workload identity
-                        # -------------------------------------------------
-
-                        export AUTH_SERVICE_DB_ROLE_ARN=$(echo "$DATABASE_WORKLOAD_IAM_ROLE_ARNS" | \
-                        jq -r '."auth-service" // empty')
-
-                        if [ -n "$AUTH_SERVICE_DB_ROLE_ARN" ]; then
-                        echo "Configuring auth-service database workload identity"
-
-                        yq e -i \
-                            '.serviceAccount.create = true' \
-                            charts/auth-service/values-dev.yaml
-
-                        yq e -i \
-                            '.serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(AUTH_SERVICE_DB_ROLE_ARN)' \
-                            charts/auth-service/values-dev.yaml
-
-                        echo "auth-service database IAM role configured"
-                        else
-                        echo "No auth-service database IAM role found; skipping workload identity configuration"
-                        fi
-
-                        # -------------------------------------------------
-                        # Auth-service database contract
-                        # -------------------------------------------------
-
-                        export AUTH_DB_HOST=$(echo "$DATABASE_CATALOG" | jq -r '.authdb.endpoint // empty')
-                        export AUTH_DB_PORT=$(echo "$DATABASE_CATALOG" | jq -r '.authdb.port // empty')
-                        export AUTH_DB_NAME=$(echo "$DATABASE_CATALOG" | jq -r '.authdb.logical_name // empty')
-                        export AUTH_DB_CREDENTIAL_REFERENCE=$(echo "$DATABASE_CATALOG" | jq -r '.authdb.credentials.secret_arn // empty')
-
-                        if [ -n "$AUTH_DB_HOST" ] && \
-                           [ -n "$AUTH_DB_PORT" ] && \
-                           [ -n "$AUTH_DB_NAME" ] && \
-                           [ -n "$AUTH_DB_CREDENTIAL_REFERENCE" ]; then
-
-                            echo "Configuring auth-service database contract"
-
-                            yq e -i \
-                                '.database.enabled = true' \
-                                charts/auth-service/values-dev.yaml
-
-                            yq e -i \
-                                '.database.host = env(AUTH_DB_HOST)' \
-                                charts/auth-service/values-dev.yaml
-
-                            yq e -i \
-                                '.database.port = env(AUTH_DB_PORT)' \
-                                charts/auth-service/values-dev.yaml
-
-                            yq e -i \
-                                '.database.name = env(AUTH_DB_NAME)' \
-                                charts/auth-service/values-dev.yaml
-
-                            yq e -i \
-                                '.database.credentialReference = env(AUTH_DB_CREDENTIAL_REFERENCE)' \
-                                charts/auth-service/values-dev.yaml
-
-                            echo "auth-service database contract configured"
-                        else
-                            echo "Database catalog information for auth-service is incomplete"
-                            echo "Skipping database contract configuration"
-                        fi
-
-                        echo "Auth-service database configuration:"
-                        echo "  Host: $AUTH_DB_HOST"
-                        echo "  Port: $AUTH_DB_PORT"
-                        echo "  Name: $AUTH_DB_NAME"
-                        echo "  Credential reference: configured"
-                        
-
                         echo "========================================"
                         echo "Updating ACM certificates across GitOps"
                         echo "========================================"
@@ -844,6 +786,35 @@ pipeline {
                         done
 
                         echo "All deployed resources reference the correct ACM certificate."
+
+                        # -------------------------------------------------
+                        # Platform environment configuration
+                        # -------------------------------------------------
+
+                        echo "========================================"
+                        echo "Publishing Platform Environment Configuration"
+                        echo "========================================"
+
+                        PLATFORM_ENV_FILE="platform/environments/${TF_ENV}.yaml"
+
+                        mkdir -p "$(dirname "${PLATFORM_ENV_FILE}")"
+
+                        ARTIFACT_BUCKET=$(terraform output -raw artifact_bucket_name)
+
+                        if [ -z "${ARTIFACT_BUCKET}" ]; then
+                            echo "ERROR: Artifact bucket could not be resolved."
+                            exit 1
+                        fi
+
+                        cat > "${PLATFORM_ENV_FILE}" <<EOF
+environment: ${TF_ENV}
+
+artifactStore:
+  bucket: ${ARTIFACT_BUCKET}
+EOF
+
+                        echo "Platform environment configuration:"
+                        cat "${PLATFORM_ENV_FILE}"
 
                         echo ""
                         echo "Git Changes"

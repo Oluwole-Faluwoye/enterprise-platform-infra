@@ -95,3 +95,11 @@ variable "dev_domain_name" {
   description = "Delegated DEV environment domain"
   type        = string
 }
+
+variable "artifact_bucket_arns" {
+  description = "S3 artifact bucket ARNs Jenkins may access for platform artifacts"
+  type        = list(string)
+  default = [
+    "arn:aws:s3:::enterprise-platform-dev-artifacts"
+  ]
+}

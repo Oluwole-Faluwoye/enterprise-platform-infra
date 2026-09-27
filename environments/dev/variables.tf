@@ -116,6 +116,11 @@ variable "services" {
       database_name = optional(string)
       access        = optional(string)
     })
+
+    migration = optional(object({
+      enabled = bool
+      engine  = string
+    }))
   }))
 
   default = {}

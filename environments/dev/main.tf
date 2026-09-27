@@ -75,6 +75,17 @@ module "eks" {
   allowed_k8s_api_cidrs = var.allowed_k8s_api_cidrs
 }
 
+
+# =========================================================
+# MIGRATION ARTIFACTS
+# =========================================================
+module "artifacts" {
+  source = "../../modules/artifacts"
+
+  bucket_name = "${var.project_name}-${var.environment}-artifacts"
+}
+
+
 # =========================================================
 # SECRETS MANAGER
 # =========================================================
@@ -115,7 +126,14 @@ module "iam_irsa" {
   oidc_provider_arn = module.eks[0].oidc_provider_arn
   oidc_provider     = module.eks[0].oidc_provider
 
-  secret_arns = module.secrets_manager.secret_arns
+  secret_arns = merge(
+    module.secrets_manager.secret_arns,
+    {
+      for service_name, resolution in module.provisioning.database_secret_resolutions :
+      "database/${service_name}" => resolution.secret.secret_arn
+      if resolution.secret_exists
+    }
+  )
 
   hosted_zone_id = data.terraform_remote_state.bootstrap.outputs.dev_hosted_zone_id
 

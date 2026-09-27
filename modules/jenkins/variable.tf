@@ -22,3 +22,9 @@ variable "allowed_jenkins_ssh_cidrs" {
   description = "CIDRs allowed to access the EKS API endpoint"
   type        = list(string)
 }
+
+variable "artifact_bucket_arns" {
+  description = "S3 artifact bucket ARNs Jenkins may access for migration artifacts"
+  type        = list(string)
+  default     = []
+}

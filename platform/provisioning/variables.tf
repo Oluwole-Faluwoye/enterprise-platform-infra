@@ -100,6 +100,14 @@ variable "services" {
 
     })
 
+    migration = optional(object({
+
+      enabled = bool
+
+      engine = string
+
+    }))
+
   }))
 
 }
@@ -149,4 +157,10 @@ variable "approved_services" {
 
   type    = set(string)
   default = []
+}
+
+variable "artifact_bucket_arns" {
+  description = "S3 artifact bucket ARNs accessible by platform workloads"
+  type        = list(string)
+  default     = []
 }

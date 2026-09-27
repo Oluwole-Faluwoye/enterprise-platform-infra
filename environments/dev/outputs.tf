@@ -162,3 +162,142 @@ output "database_workload_iam_role_arns" {
   description = "IAM roles created for database workload identities"
   value       = module.provisioning.database_workload_iam_role_arns
 }
+
+# =========================================================
+# DATABASE MIGRATION
+# =========================================================
+
+output "migration_requests" {
+  description = "Services requesting database migration capability"
+  value       = module.provisioning.migration_requests
+}
+
+output "artifact_bucket_name" {
+  description = "S3 bucket used for platform artifacts"
+  value       = module.artifacts.bucket_name
+}
+
+output "artifact_bucket_arn" {
+  description = "ARN of the platform artifact bucket"
+  value       = module.artifacts.bucket_arn
+}
+# =========================================================
+# PLATFORM RESOLVED SERVICE OUTPUTS
+# =========================================================
+
+output "platform_application_security_groups" {
+  description = "Platform-resolved application security groups"
+  value       = module.provisioning.application_security_groups
+}
+
+output "platform_database_secret_resolutions" {
+  description = "Platform-resolved database credential references"
+  value       = module.provisioning.database_secret_resolutions
+  sensitive   = true
+}
+
+output "platform_database_workload_identities" {
+  description = "Platform-resolved database workload identities"
+  value       = module.provisioning.database_workload_identities
+}
+
+output "platform_migration_requests" {
+  description = "Platform-resolved migration requests"
+  value       = module.provisioning.migration_requests
+}
+
+output "platform_migration_identities" {
+  description = "Platform-resolved migration workload identities"
+  value       = module.provisioning.migration_workload_identities
+}
+
+# =========================================================
+# GITOPS SERVICE CONTRACT
+# =========================================================
+
+output "gitops_service_contract" {
+  description = "Non-secret platform contract consumed by Jenkins for GitOps synchronization"
+
+  value = {
+    for service_name, service in module.provisioning.resolved_services :
+    service_name => {
+      name        = service.name
+      namespace   = service.namespace
+      team        = service.team
+      runtime     = service.runtime
+      environment = service.environment
+
+      database = {
+        enabled = service.persistence.enabled
+        engine  = service.persistence.engine
+
+        host = try(
+          module.provisioning.database_secret_resolutions[service_name].database.endpoint,
+          null
+        )
+
+        port = try(
+          module.provisioning.database_secret_resolutions[service_name].database.port,
+          null
+        )
+
+        name = service.persistence.database_name
+
+        credential_reference = try(
+          module.provisioning.database_secret_resolutions[service_name].secret.secret_arn,
+          null
+        )
+      }
+
+      workload_identity = {
+        service_account_name = try(
+          module.provisioning.database_workload_identities[service_name].service_account_name,
+          null
+        )
+
+        role_arn = try(
+          module.provisioning.database_workload_iam_role_arns[service_name],
+          null
+        )
+      }
+
+      security_group = {
+        id = try(
+          module.provisioning.application_security_groups[service_name].id,
+          null
+        )
+
+        name = try(
+          module.provisioning.application_security_groups[service_name].name,
+          null
+        )
+      }
+
+      migration = {
+        enabled = try(
+          module.provisioning.migration_requests[service_name].enabled,
+          false
+        )
+
+        engine = try(
+          module.provisioning.migration_requests[service_name].engine,
+          null
+        )
+
+        service_account_name = try(
+          module.provisioning.migration_service_accounts[service_name],
+          null
+        )
+
+        role_arn = try(
+          module.provisioning.migration_iam_role_arns[service_name],
+          null
+        )
+
+        artifact = {
+          bucket = module.artifacts.bucket_name
+        }
+      }
+    }
+  }
+}

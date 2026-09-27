@@ -213,3 +213,33 @@ module "database_workload_identity" {
   approved_services = var.approved_services
 }
 
+# =========================================================
+# MIGRATION WORKLOAD IDENTITY
+# =========================================================
+
+module "migration_workload_identity" {
+  source = "../../modules/migration-workload-identity"
+
+  count = var.environment_context.enable_eks ? 1 : 0
+
+  project     = var.project
+  environment = var.environment
+
+  oidc_provider_arn = var.environment_context.oidc_provider_arn
+  oidc_provider     = var.environment_context.oidc_provider
+
+  migration_requests = module.resolver.migration_requests
+
+  service_namespaces = {
+    for service_name, service in module.resolver.resolved_services :
+    service_name => service.namespace
+  }
+
+  database_secret_arns = {
+    for service_name, resolution in module.database_secret_resolution.secret_resolutions :
+    service_name => resolution.secret.secret_arn
+    if resolution.secret_exists
+  }
+
+  artifact_bucket_arns = var.artifact_bucket_arns
+}

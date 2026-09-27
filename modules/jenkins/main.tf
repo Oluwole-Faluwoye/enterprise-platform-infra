@@ -231,6 +231,35 @@ resource "aws_iam_role_policy" "jenkins_inline_policy" {
       },
 
       # ==================================================
+      # PLATFORM ARTIFACTS
+      # ==================================================
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
+        ]
+
+        Resource = var.artifact_bucket_arns
+      },
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject"
+        ]
+
+        Resource = [
+          for arn in var.artifact_bucket_arns :
+          "${arn}/*"
+        ]
+      },
+
+      # ==================================================
       # TERRAFORM STATE LOCKING
       # ==================================================
 

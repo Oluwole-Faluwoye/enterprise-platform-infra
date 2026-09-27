@@ -285,3 +285,15 @@ output "platform_actions" {
   }
 
 }
+
+output "migration_requests" {
+
+  description = "Services requesting database migration capability"
+
+  value = {
+    for service_name, service in local.resolved_services :
+    service_name => service.migration
+    if service.migration.enabled
+  }
+
+}

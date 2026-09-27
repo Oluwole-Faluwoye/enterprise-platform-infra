@@ -64,5 +64,10 @@ services = {
       size          = "small"
       database_name = "authdb"
     }
+
+    migration = {
+      enabled = true
+      engine  = "flyway"
+    }
   }
 }

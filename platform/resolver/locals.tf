@@ -374,6 +374,24 @@ locals {
 
       }
 
+      # -----------------------------------------------------
+      # Migration
+      # -----------------------------------------------------
+
+      migration = {
+
+        enabled = try(
+          service.migration.enabled,
+          false
+        )
+
+        engine = try(
+          service.migration.engine,
+          null
+        )
+
+      }
+
     }
 
   }

@@ -265,3 +265,65 @@ output "database_workload_namespaces" {
   )
 }
 
+# =========================================================
+# DATABASE MIGRATION
+# =========================================================
+
+output "migration_requests" {
+
+  description = "Services requesting database migration capability"
+
+  value = module.resolver.migration_requests
+
+}
+
+output "migration_identities" {
+  description = "Resolved migration workload identity mappings"
+
+  value = (
+    length(module.migration_workload_identity) > 0
+    ? module.migration_workload_identity[0].migration_identities
+    : {}
+  )
+}
+
+output "migration_iam_role_arns" {
+  description = "IAM role ARNs created for migration workloads"
+
+  value = (
+    length(module.migration_workload_identity) > 0
+    ? module.migration_workload_identity[0].iam_role_arns
+    : {}
+  )
+}
+
+output "migration_iam_role_names" {
+  description = "IAM role names created for migration workloads"
+
+  value = (
+    length(module.migration_workload_identity) > 0
+    ? module.migration_workload_identity[0].iam_role_names
+    : {}
+  )
+}
+
+output "migration_service_accounts" {
+  description = "Kubernetes ServiceAccounts created for migration workloads"
+
+  value = (
+    length(module.migration_workload_identity) > 0
+    ? module.migration_workload_identity[0].service_accounts
+    : {}
+  )
+}
+output "migration_workload_identities" {
+  description = "Migration workload identities created by the platform"
+  value = try({
+    identities       = module.migration_workload_identity[0].migration_identities
+    iam_role_arns    = module.migration_workload_identity[0].iam_role_arns
+    iam_role_names   = module.migration_workload_identity[0].iam_role_names
+    service_accounts = module.migration_workload_identity[0].service_accounts
+    namespaces       = module.migration_workload_identity[0].namespaces
+  }, {})
+}
+

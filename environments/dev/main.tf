@@ -189,6 +189,10 @@ module "provisioning" {
   database_registry = var.database_registry
 
   approved_services = var.approved_services
+
+    artifact_bucket_arns = [
+    module.artifacts.bucket_arn
+  ]
 }
 
 # =========================================================

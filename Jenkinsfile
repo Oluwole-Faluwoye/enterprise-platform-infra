@@ -826,6 +826,179 @@ pipeline {
                         echo "All deployed resources reference the correct ACM certificate."
 
                         # -------------------------------------------------
+                        # Auth-service platform contract
+                        # -------------------------------------------------
+
+                        echo "========================================"
+                        echo "Applying auth-service platform contract"
+                        echo "========================================"
+
+                        export AUTH_SERVICE_CONTRACT=$(echo "$GITOPS_SERVICE_CONTRACT" | \
+                            jq -c '.["auth-service"] // empty')
+
+                        if [ -z "$AUTH_SERVICE_CONTRACT" ]; then
+                            echo "ERROR: auth-service contract could not be resolved."
+                            echo "GitOps service contract:"
+                            echo "$GITOPS_SERVICE_CONTRACT"
+                            exit 1
+                        fi
+
+                        export AUTH_DB_ENABLED=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.database.enabled // false')
+
+                        export AUTH_DB_HOST=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.database.host // empty')
+
+                        export AUTH_DB_PORT=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.database.port // empty')
+
+                        export AUTH_DB_NAME=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.database.name // empty')
+
+                        export AUTH_DB_CREDENTIAL_REFERENCE=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.database.credential_reference // empty')
+
+                        export AUTH_SERVICE_DB_ROLE_ARN=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.workload_identity.role_arn // empty')
+
+                        export AUTH_SERVICE_SG=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.security_group.id // empty')
+
+                        export AUTH_MIGRATION_ENABLED=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.migration.enabled // false')
+
+                        export AUTH_MIGRATION_ENGINE=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.migration.engine // empty')
+
+                        export AUTH_MIGRATION_ROLE_ARN=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.migration.role_arn // empty')
+
+                        export AUTH_MIGRATION_SERVICE_ACCOUNT=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.migration.service_account_name // empty')
+
+                        export AUTH_MIGRATION_ARTIFACT_BUCKET=$(echo "$AUTH_SERVICE_CONTRACT" | \
+                            jq -r '.migration.artifact.bucket // empty')
+
+                        echo "Auth-service contract resolved:"
+                        echo "  Database enabled      : $AUTH_DB_ENABLED"
+                        echo "  Database host         : $AUTH_DB_HOST"
+                        echo "  Database port         : $AUTH_DB_PORT"
+                        echo "  Database name         : $AUTH_DB_NAME"
+                        echo "  Credential reference  : configured"
+                        echo "  Database IAM role     : configured"
+                        echo "  Security group        : $AUTH_SERVICE_SG"
+                        echo "  Migration enabled     : $AUTH_MIGRATION_ENABLED"
+                        echo "  Migration engine      : $AUTH_MIGRATION_ENGINE"
+                        echo "  Migration role        : configured"
+                        echo "  Migration service acct: $AUTH_MIGRATION_SERVICE_ACCOUNT"
+                        echo "  Migration bucket      : $AUTH_MIGRATION_ARTIFACT_BUCKET"
+
+                        if [ "$AUTH_DB_ENABLED" = "true" ]; then
+
+                            if [ -z "$AUTH_DB_HOST" ] || \
+                               [ -z "$AUTH_DB_PORT" ] || \
+                               [ -z "$AUTH_DB_NAME" ] || \
+                               [ -z "$AUTH_DB_CREDENTIAL_REFERENCE" ]; then
+
+                                echo "ERROR: auth-service database contract is incomplete."
+                                exit 1
+                            fi
+
+                            echo "Configuring auth-service database contract..."
+
+                            yq e -i \
+                                '.database.enabled = true' \
+                                charts/auth-service/values-dev.yaml
+
+                            yq e -i \
+                                '.database.host = env(AUTH_DB_HOST)' \
+                                charts/auth-service/values-dev.yaml
+
+                            yq e -i \
+                                '.database.port = env(AUTH_DB_PORT)' \
+                                charts/auth-service/values-dev.yaml
+
+                            yq e -i \
+                                '.database.name = env(AUTH_DB_NAME)' \
+                                charts/auth-service/values-dev.yaml
+
+                            yq e -i \
+                                '.database.credentialReference = env(AUTH_DB_CREDENTIAL_REFERENCE)' \
+                                charts/auth-service/values-dev.yaml
+
+                        fi
+
+                        if [ -n "$AUTH_SERVICE_DB_ROLE_ARN" ]; then
+
+                            echo "Configuring auth-service database workload identity..."
+
+                            yq e -i \
+                                '.serviceAccount.create = true' \
+                                charts/auth-service/values-dev.yaml
+
+                            yq e -i \
+                                '.serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(AUTH_SERVICE_DB_ROLE_ARN)' \
+                                charts/auth-service/values-dev.yaml
+
+                        fi
+
+                        if [ -n "$AUTH_SERVICE_SG" ]; then
+
+                            echo "Configuring auth-service SecurityGroupPolicy..."
+
+                            yq e -i \
+                                '.securityGroupPolicy.enabled = true |
+                                 .securityGroupPolicy.groupId = env(AUTH_SERVICE_SG)' \
+                                charts/auth-service/values-dev.yaml
+
+                        fi
+
+                        if [ "$AUTH_MIGRATION_ENABLED" = "true" ]; then
+
+                            if [ "$AUTH_MIGRATION_ENGINE" != "flyway" ]; then
+                                echo "ERROR: Unsupported auth-service migration engine: $AUTH_MIGRATION_ENGINE"
+                                exit 1
+                            fi
+
+                            if [ -z "$AUTH_MIGRATION_ROLE_ARN" ] || \
+                               [ -z "$AUTH_MIGRATION_SERVICE_ACCOUNT" ] || \
+                               [ -z "$AUTH_MIGRATION_ARTIFACT_BUCKET" ]; then
+
+                                echo "ERROR: auth-service migration contract is incomplete."
+                                exit 1
+                            fi
+
+                            echo "Configuring auth-service migration contract..."
+
+                            yq e -i \
+                                '.migration.enabled = true |
+                                 .migration.engine = env(AUTH_MIGRATION_ENGINE) |
+                                 .migration.artifact.bucket = env(AUTH_MIGRATION_ARTIFACT_BUCKET) |
+                                 .migration.serviceAccount.name = env(AUTH_MIGRATION_SERVICE_ACCOUNT) |
+                                 .migration.serviceAccount.roleArn = env(AUTH_MIGRATION_ROLE_ARN)' \
+                                charts/auth-service/values-dev.yaml
+
+                            if [ -n "$AUTH_SERVICE_SG" ]; then
+                                yq e -i \
+                                    '.migration.securityGroupPolicy.enabled = true |
+                                     .migration.securityGroupPolicy.groupId = env(AUTH_SERVICE_SG)' \
+                                    charts/auth-service/values-dev.yaml
+                            fi
+
+                        fi
+
+                        echo ""
+                        echo "Auth-service platform configuration:"
+                        yq e '
+                          {
+                            serviceAccount: .serviceAccount,
+                            database: .database,
+                            securityGroupPolicy: .securityGroupPolicy,
+                            migration: .migration
+                          }
+                        ' charts/auth-service/values-dev.yaml
+
+                        # -------------------------------------------------
                         # Platform environment configuration
                         # -------------------------------------------------
 

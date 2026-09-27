@@ -733,6 +733,28 @@ pipeline {
                         yq e -i '
                         .serviceAccount.annotations."eks.amazonaws.com/role-arn" = env(EXTERNAL_DNS_ROLE)
                         ' charts/external-dns/values.yaml
+
+                        echo "Updating AWS Load Balancer Controller VPC..."
+
+                        yq e -i '
+                        .vpcId = env(VPC_ID)
+                        ' charts/aws-load-balancer-controller/values.yaml
+
+                        echo "Validating AWS Load Balancer Controller VPC..."
+
+                        CURRENT_VPC_ID=$(yq e '.vpcId' charts/aws-load-balancer-controller/values.yaml)
+
+                        if [ "$CURRENT_VPC_ID" != "$VPC_ID" ]; then
+                            echo "========================================"
+                            echo "ERROR: Incorrect VPC ID in GitOps"
+                            echo "========================================"
+                            echo "Expected : $VPC_ID"
+                            echo "Found    : $CURRENT_VPC_ID"
+                            exit 1
+                        fi
+
+                        echo "AWS Load Balancer Controller VPC is correct: $CURRENT_VPC_ID"
+
                         echo "========================================"
                         echo "Updating ACM certificates across GitOps"
                         echo "========================================"

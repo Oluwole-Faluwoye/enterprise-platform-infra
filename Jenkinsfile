@@ -737,6 +737,22 @@ pipeline {
                         echo "Updating ACM certificates across GitOps"
                         echo "========================================"
 
+                        echo "Updating ArgoCD ACM Certificate..."
+
+                        yq e -i '
+                        .server.ingress.annotations."alb.ingress.kubernetes.io/certificate-arn" = env(CERTIFICATE_ARN)
+                        ' charts/argocd/values.yaml
+
+                        echo "Updating ArgoCD Hostname..."
+
+                        yq e -i '
+                        .server.ingress.hostname = env(ARGOCD_HOSTNAME)
+                        ' charts/argocd/values.yaml
+
+                        yq e -i '
+                        .server.ingress.annotations."external-dns.alpha.kubernetes.io/hostname" = env(ARGOCD_HOSTNAME)
+                        ' charts/argocd/values.yaml
+
                         grep -rl "alb.ingress.kubernetes.io/certificate-arn" charts | while read file
                         do
                             # ArgoCD is already updated above

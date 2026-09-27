@@ -989,14 +989,10 @@ pipeline {
 
                         echo ""
                         echo "Auth-service platform configuration:"
-                        yq e '
-                          {
-                            serviceAccount: .serviceAccount,
-                            database: .database,
-                            securityGroupPolicy: .securityGroupPolicy,
-                            migration: .migration
-                          }
-                        ' charts/auth-service/values-dev.yaml
+                        yq e '.serviceAccount' charts/auth-service/values-dev.yaml
+                        yq e '.database' charts/auth-service/values-dev.yaml
+                        yq e '.securityGroupPolicy' charts/auth-service/values-dev.yaml
+                        yq e '.migration' charts/auth-service/values-dev.yaml
 
                         # -------------------------------------------------
                         # Platform environment configuration
